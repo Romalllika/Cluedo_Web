@@ -1,0 +1,695 @@
+* {
+    box-sizing: border-box
+}
+
+body {
+    margin: 0;
+    font-family: Inter, Arial, sans-serif;
+    background: radial-gradient(circle at top, #29324a, #0d1020 55%, #080910);
+    color: #eef2ff;
+    min-height: 100vh
+}
+
+a {
+    color: inherit;
+    text-decoration: none
+}
+
+.top {
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+    background: rgba(255, 255, 255, .08);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, .12);
+    position: sticky;
+    top: 0;
+    z-index: 10
+}
+
+.top nav {
+    display: flex;
+    gap: 16px
+}
+
+.auth {
+    display: grid;
+    place-items: center
+}
+
+.auth-card {
+    width: min(480px, 92vw);
+    padding: 36px;
+    text-align: center
+}
+
+.glass,
+.panel {
+    background: rgba(255, 255, 255, .09);
+    border: 1px solid rgba(255, 255, 255, .14);
+    border-radius: 24px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, .28);
+    backdrop-filter: blur(18px)
+}
+
+input,
+select,
+button,
+.btn {
+    border: 0;
+    border-radius: 14px;
+    padding: 13px 16px;
+    font-size: 15px
+}
+
+input,
+select {
+    background: rgba(255, 255, 255, .12);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, .14);
+    width: 100%;
+    margin: 6px 0
+}
+
+option {
+    color: #111
+}
+
+button,
+.btn {
+    background: linear-gradient(135deg, #f5c542, #ff7a59);
+    color: #191919;
+    font-weight: 800;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: .2s
+}
+
+.secondary {
+    background: rgba(255, 255, 255, .16);
+    color: #fff
+}
+
+.row {
+    display: flex;
+    gap: 10px
+}
+
+.alert {
+    background: #ff4d6d33;
+    border: 1px solid #ff4d6d;
+    padding: 12px;
+    border-radius: 12px;
+    margin: 10px 0
+}
+
+.layout {
+    width: min(1200px, 94vw);
+    margin: 26px auto
+}
+
+.hero {
+    padding: 32px
+}
+
+.stats {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap
+}
+
+.stats span,
+.badge {
+    padding: 9px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .13)
+}
+
+.grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin: 18px 0
+}
+
+.panel {
+    padding: 20px
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 16px
+}
+
+.game-card {
+    padding: 18px;
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, .13), rgba(255, 255, 255, .06));
+    border: 1px solid rgba(255, 255, 255, .12)
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse
+}
+
+td {
+    padding: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, .1)
+}
+
+.game-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr 300px;
+    gap: 18px;
+    width: min(1500px, 96vw);
+    margin: 20px auto
+}
+
+.side {
+    max-height: calc(100vh - 95px);
+    overflow: auto
+}
+
+.player {
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, .1);
+    display: flex;
+    flex-direction: column
+}
+
+.seats {
+    display: grid;
+    gap: 8px
+}
+
+.seat {
+    padding: 11px;
+    border-radius: 13px;
+    background: rgba(90, 220, 140, .18);
+    border: 1px solid rgba(90, 220, 140, .35)
+}
+
+.seat.busy {
+    opacity: .45;
+    background: rgba(255, 255, 255, .08);
+    pointer-events: none
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px
+}
+
+.actions button:disabled {
+    opacity: .35
+}
+
+.dice {
+    display: flex;
+    gap: 10px;
+    margin: 15px 0
+}
+
+.dice span {
+    width: 58px;
+    height: 58px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    background: #fff;
+    color: #111;
+    font-size: 28px;
+    font-weight: 900;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, .25)
+}
+
+.shake {
+    animation: shake .65s ease
+}
+
+@keyframes shake {
+    20% {
+        transform: rotate(10deg) translateX(8px)
+    }
+
+    40% {
+        transform: rotate(-10deg) translateX(-8px)
+    }
+
+    60% {
+        transform: rotate(8deg)
+    }
+
+    80% {
+        transform: rotate(-8deg)
+    }
+}
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(11, 1fr);
+    gap: 6px
+}
+
+.cell {
+    aspect-ratio: 1;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .08);
+    border: 1px solid rgba(255, 255, 255, .12);
+    position: relative;
+    color: #fff;
+    padding: 3px;
+    transition: .18s
+}
+
+.cell:hover {
+    transform: scale(1.04);
+    background: rgba(255, 255, 255, .16)
+}
+
+.cell.room {
+    background: linear-gradient(135deg, rgba(88, 166, 255, .34), rgba(174, 92, 255, .25));
+    border-color: rgba(164, 208, 255, .45)
+}
+
+.cell small {
+    font-size: 10px;
+    display: block
+}
+
+.token {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #f5c542;
+    color: #111;
+    display: inline-grid;
+    place-items: center;
+    font-weight: 900;
+    margin: 2px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, .25);
+    animation: pop .25s
+}
+
+.token.active {
+    outline: 3px solid #fff
+}
+
+@keyframes pop {
+    from {
+        transform: scale(.4)
+    }
+
+    to {
+        transform: scale(1)
+    }
+}
+
+.card {
+    padding: 14px;
+    margin: 8px 0;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #fff, #dfe6ff);
+    color: #111;
+    min-height: 74px;
+    transform-style: preserve-3d
+}
+
+.flip {
+    animation: flip .5s ease
+}
+
+@keyframes flip {
+    from {
+        transform: rotateY(90deg)
+    }
+
+    to {
+        transform: rotateY(0)
+    }
+}
+
+.card small {
+    display: block;
+    color: #333
+}
+
+.log {
+    height: 300px;
+    overflow: auto
+}
+
+.log p {
+    padding: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, .08)
+}
+
+.notes {
+    display: grid;
+    gap: 7px
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .65);
+    place-items: center;
+    z-index: 20
+}
+
+.modal.show {
+    display: grid
+}
+
+.modal-box {
+    width: min(520px, 92vw);
+    background: #14182b;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 24px;
+    padding: 24px;
+    position: relative
+}
+
+.x {
+    position: absolute;
+    right: 14px;
+    top: 14px;
+    background: rgba(255, 255, 255, .12);
+    color: #fff
+}
+
+.formgrid {
+    display: grid;
+    gap: 10px
+}
+
+@media(max-width:1050px) {
+
+    .game-layout,
+    .grid2 {
+        grid-template-columns: 1fr
+    }
+
+    .side {
+        max-height: none
+    }
+
+    .toolbar {
+        display: block
+    }
+}
+
+/* Новое поле: комнаты + коридоры + расчёт расстояний */
+.board-wrap {
+    overflow: auto
+}
+
+.board {
+    grid-template-columns: repeat(15, minmax(34px, 1fr));
+    gap: 5px;
+    min-width: 720px
+}
+
+.cell {
+    min-width: 34px
+}
+
+.cell.path {
+    background: rgba(255, 255, 255, .075)
+}
+
+.cell.door {
+    background: linear-gradient(135deg, rgba(90, 220, 140, .35), rgba(245, 197, 66, .26));
+    border-color: rgba(90, 220, 140, .7)
+}
+
+.cell.room {
+    background: linear-gradient(135deg, rgba(88, 166, 255, .30), rgba(174, 92, 255, .28));
+    border-color: rgba(164, 208, 255, .45);
+    border-radius: 8px
+}
+
+.cell.room:hover {
+    transform: none
+}
+
+.cell.reachable {
+    box-shadow: 0 0 0 2px rgba(90, 220, 140, .9), 0 0 24px rgba(90, 220, 140, .25);
+    background-color: rgba(90, 220, 140, .18)
+}
+
+.cell.blocked {
+    box-shadow: 0 0 0 2px rgba(255, 77, 109, .75);
+    opacity: .68
+}
+
+.cell small {
+    font-size: 9px;
+    font-weight: 900;
+    line-height: 1.05
+}
+
+.cell em {
+    display: block;
+    font-size: 8px;
+    font-style: normal;
+    opacity: .82;
+    margin-top: 2px
+}
+
+.door-mark {
+    font-size: 18px;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 0 2px 8px #000
+}
+
+.distance-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, .08)
+}
+
+.distance-row b {
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .12)
+}
+
+/* Canvas-версия игрового поля */
+.inline-form {
+    display: inline;
+    margin: 0
+}
+
+.link-button {
+    background: transparent;
+    color: #fff;
+    padding: 0;
+    border-radius: 0;
+    font-weight: 700;
+    box-shadow: none
+}
+
+.link-button:hover {
+    text-decoration: underline
+}
+
+.game-layout {
+    grid-template-columns: 280px minmax(720px, 1fr) 300px
+}
+
+.board-wrap {
+    overflow: hidden
+}
+
+.mansion-shell {
+    width: 100%;
+    min-height: calc(100vh - 230px);
+    position: relative;
+    border-radius: 26px;
+    overflow: auto;
+    border: 1px solid rgba(255, 255, 255, .16);
+    background: radial-gradient(circle at 50% 30%, rgba(255, 240, 180, .16), transparent 45%), linear-gradient(135deg, #1a100b, #4d3525);
+    box-shadow: inset 0 0 80px rgba(0, 0, 0, .55), 0 28px 80px rgba(0, 0, 0, .35)
+}
+
+#mansionCanvas {
+    display: block;
+    width: 100%;
+    height: calc(100vh - 210px);
+    min-height: 680px;
+    cursor: pointer
+}
+
+.canvas-hint {
+    position: absolute;
+    left: 18px;
+    bottom: 18px;
+    right: 18px;
+    padding: 12px 16px;
+    border-radius: 16px;
+    color: #fff7dd;
+    background: rgba(0, 0, 0, .42);
+    backdrop-filter: blur(10px);
+    font-size: 14px;
+    border: 1px solid rgba(255, 255, 255, .16)
+}
+
+.notebook-tab {
+    position: fixed;
+    right: 0;
+    top: 45%;
+    z-index: 30;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    border-radius: 16px 0 0 16px;
+    padding: 18px 10px;
+    background: linear-gradient(135deg, #f8e6b0, #c9974b);
+    color: #1f160c;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, .35)
+}
+
+.notebook-drawer {
+    position: fixed;
+    top: 78px;
+    right: 0;
+    width: min(430px, 94vw);
+    height: calc(100vh - 96px);
+    z-index: 35;
+    transform: translateX(104%);
+    transition: transform .28s ease;
+    border-radius: 24px 0 0 24px;
+    background: linear-gradient(90deg, rgba(120, 60, 20, .16) 0 42px, transparent 42px), repeating-linear-gradient(to bottom, #fff3c8, #fff3c8 31px, #e8c98e 32px);
+    color: #2a1c0f;
+    border: 1px solid rgba(80, 40, 10, .35);
+    box-shadow: -24px 0 70px rgba(0, 0, 0, .45);
+    overflow: hidden
+}
+
+.notebook-drawer.open {
+    transform: translateX(0)
+}
+
+.notebook-head {
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px 12px 56px;
+    background: rgba(130, 70, 20, .16);
+    border-bottom: 2px solid rgba(80, 40, 10, .16)
+}
+
+.notebook-head h2 {
+    margin: 0;
+    font-family: Georgia, serif;
+    color: #2a1c0f
+}
+
+.notebook-head button {
+    background: rgba(70, 35, 10, .15);
+    color: #2a1c0f;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border-radius: 50%
+}
+
+.notebook-paper {
+    height: calc(100% - 72px);
+    overflow: auto;
+    padding: 14px 22px 28px 56px
+}
+
+.note-section {
+    margin: 0 0 22px
+}
+
+.note-section h3 {
+    font-family: Georgia, serif;
+    color: #5a3214;
+    margin: 0 0 12px;
+    border-bottom: 1px solid rgba(80, 40, 10, .25);
+    padding-bottom: 6px
+}
+
+.note-section label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 30px;
+    font-size: 15px
+}
+
+.note-section input {
+    width: auto;
+    margin: 0;
+    accent-color: #6b3d16
+}
+
+.note-section span {
+    color: #2a1c0f
+}
+
+@media(max-width:1050px) {
+    .game-layout {
+        grid-template-columns: 1fr
+    }
+
+    .mansion-shell {
+        min-height: 580px
+    }
+
+    #mansionCanvas {
+        min-height: 580px;
+        height: 72vh
+    }
+
+    .canvas-hint {
+        font-size: 12px
+    }
+
+    .board-wrap {
+        overflow: auto
+    }
+}
+
+.seat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.seat b {
+    color: inherit;
+}
+
+.seat span {
+    font-size: 12px;
+    opacity: .75;
+}
+
+.current-player {
+    outline: 2px solid rgba(245, 197, 66, .85);
+    box-shadow: 0 0 0 4px rgba(245, 197, 66, .16);
+}
