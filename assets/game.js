@@ -16,7 +16,30 @@ function api(action, data = {}) {
 }
 function closeModal() { $('#modal').classList.remove('show'); }
 function openModal(title, html) { $('#modalTitle').textContent = title; $('#modalBody').innerHTML = html; $('#modal').classList.add('show'); }
-async function refresh() { state = await api('state'); if (state.error) { alert(state.error); return; } render(); }
+let fatalGameErrorShown = false;
+
+async function refresh() {
+  state = await api('state');
+
+  if (state.error) {
+    if (!fatalGameErrorShown) {
+      fatalGameErrorShown = true;
+
+      alert(state.error);
+
+      if (
+        state.error === 'Игра не найдена' ||
+        state.error === 'Вы не состоите в этой игре'
+      ) {
+        window.location.href = 'lobby.php';
+      }
+    }
+
+    return;
+  }
+
+  render();
+}
 
 function render() {
   const g = state.game, ps = state.players;

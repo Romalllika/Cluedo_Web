@@ -3,7 +3,7 @@ require_auth();
 require 'includes/data.php';
 $uid = current_user_id();
 // Автоудаление пустых ожидающих лобби
-db()->query("DELETE g FROM games g LEFT JOIN game_players gp ON gp.game_id=g.id WHERE g.status='waiting' AND gp.id IS NULL");
+// db()->query("DELETE g FROM games g LEFT JOIN game_players gp ON gp.game_id=g.id WHERE g.status='waiting' AND gp.id IS NULL");
 $u = db()->prepare('SELECT *, ROUND(IF(games_played=0,0,wins/games_played*100),1) AS wr FROM users WHERE id=?');
 $u->execute([$uid]);
 $me = $u->fetch();
@@ -55,18 +55,95 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
         </section>
         <section class="panel">
             <h2>Активные и ожидающие матчи</h2>
-            <div class="cards"><?php foreach ($games as $g): ?>
+            <div class="cards" id="lobbyGames">
+                <?php foreach ($games as $g): ?>
                     <article class="game-card">
                         <h3><?= h($g['title']) ?></h3>
                         <p>Создатель: <?= h($g['owner']) ?></p>
-                        <p class="badge <?= $g['status'] ?>"><?= $g['status'] === 'waiting' ? 'Ожидает игроков' : 'Идёт игра' ?> ·
-                            <?= $g['players'] ?>/<?= $g['max_players'] ?></p><a class="btn"
-                            href="game.php?id=<?= $g['id'] ?>">Открыть</a>
-                    </article><?php endforeach; ?><?php if (!$games): ?>
-                    <p>Пока матчей нет. Создай первый.</p><?php endif; ?>
+                        <p class="badge <?= h($g['status']) ?>">
+                            <?= $g['status'] === 'waiting' ? 'Ожидает игроков' : 'Идёт игра' ?> ·
+                            <?= (int) $g['players'] ?>/<?= (int) $g['max_players'] ?>
+                        </p>
+                        <a class="btn" href="game.php?id=<?= (int) $g['id'] ?>">Открыть</a>
+                    </article>
+                <?php endforeach; ?>
+
+                <?php if (!$games): ?>
+                    <p>Пока матчей нет. Создай первый.</p>
+                <?php endif; ?>
             </div>
         </section>
     </main>
+    <script>
+        async function loadLobbyGames() {
+            const box = document.querySelector('#lobbyGames');
+
+            if (!box) {
+                return;
+            }
+
+            try {
+                const res = await fetch('lobby_state.php', {
+                    cache: 'no-store'
+                });
+
+                const data = await res.json();
+
+                if (!data.games) {
+                    return;
+                }
+
+                if (data.games.length === 0) {
+                    box.innerHTML = `
+                    <div class="empty-state">
+                        <h3>Пока нет активных лобби</h3>
+                        <p>Создай новую игру, чтобы другие игроки могли присоединиться.</p>
+                    </div>
+                `;
+                    return;
+                }
+
+                box.innerHTML = data.games.map(g => {
+                    const isWaiting = g.status === 'waiting';
+
+                    return `
+                    <article class="game-card">
+                        <div>
+                            <h3>${escapeHtml(g.title || ('Игра #' + g.id))}</h3>
+                            <p>
+                                Создатель: <b>${escapeHtml(g.owner_name || 'Игрок')}</b>
+                            </p>
+                            <p>
+                                Игроков: <b>${g.players_count}</b> / ${g.max_players}
+                            </p>
+                            <p>
+                                Статус: <b>${isWaiting ? 'ожидает игроков' : 'идёт игра'}</b>
+                            </p>
+                        </div>
+
+                        <a class="btn" href="game.php?id=${g.id}">
+                            ${isWaiting ? 'Зайти в лобби' : 'Смотреть / продолжить'}
+                        </a>
+                    </article>
+                `;
+                }).join('');
+            } catch (e) {
+                console.error('Lobby refresh failed', e);
+            }
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        loadLobbyGames();
+        setInterval(loadLobbyGames, 2000);
+    </script>
 </body>
 
 </html>
