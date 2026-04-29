@@ -2,6 +2,8 @@ const gid = document.body.dataset.game;
 let state = null;
 let lastDisprovePromptKey = null;
 let lastShownNoticeKey = null;
+let cardsRenderedOnce = false;
+let lastCardsKey = '';
 const $ = s => document.querySelector(s);
 const canvas = $('#mansionCanvas');
 const ctx = canvas ? canvas.getContext('2d') : null;
@@ -399,7 +401,34 @@ function drawPlayers() {
   Object.values(grouped).forEach(list => list.forEach((p, i) => { const base = cellToPx(+p.pos_x, +p.pos_y); const a = (Math.PI * 2 / Math.max(1, list.length)) * i; const off = list.length > 1 ? c * .18 : 0; const x = base.x + c / 2 + Math.cos(a) * off, y = base.y + c / 2 + Math.sin(a) * off; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4; ctx.fillStyle = colorForChar(p.character_name); ctx.beginPath(); ctx.arc(x, y, c * .30, 0, Math.PI * 2); ctx.fill(); ctx.lineWidth = +p.user_id === +state.game.current_turn_player_id ? 5 : 2; ctx.strokeStyle = +p.user_id === +state.game.current_turn_player_id ? '#fff' : '#211207'; ctx.stroke(); ctx.fillStyle = '#111'; ctx.font = '900 ' + Math.max(13, c * .36) + 'px Inter, Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(p.character_name[0], x, y); ctx.restore(); }));
 }
 if (canvas) { canvas.addEventListener('click', async e => { if (!state || +state.game.current_turn_player_id !== +CURRENT_USER_ID || state.game.phase !== 'move') return; const r = canvas.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top; const t = meta.clickable.find(a => x >= a.px && x <= a.px + a.w && y >= a.py && y <= a.py + a.h); if (!t) return; const res = await api('move', { x: t.x, y: t.y }); if (res.error) return alert(res.error); refresh(); }); }
-function renderCards() { $('#myCards').innerHTML = '<h3>Мои карты</h3>' + state.myCards.map(c => `<div class="card flip"><b>${c.card_name}</b><small>${c.card_type}</small></div>`).join(''); }
+function renderCards() {
+  const cardsKey = state.myCards
+    .map(c => c.card_type + ':' + c.card_name)
+    .join('|');
+
+  /**
+   * Если набор карт не изменился — вообще не перерисовываем.
+   * Это убирает постоянное повторение flip-анимации при refresh().
+   */
+  if (cardsRenderedOnce && cardsKey === lastCardsKey) {
+    return;
+  }
+
+  lastCardsKey = cardsKey;
+
+  const shouldAnimate = !cardsRenderedOnce && state.myCards.length > 0;
+
+  $('#myCards').innerHTML =
+    '<h3>Мои карты</h3>' +
+    state.myCards.map(c => `
+      <div class="card ${shouldAnimate ? 'flip' : ''}">
+        <b>${c.card_name}</b>
+        <small>${c.card_type}</small>
+      </div>
+    `).join('');
+
+  cardsRenderedOnce = true;
+}
 function renderLog() { $('#log').innerHTML = state.logs.map(l => `<p><b>${l.username || 'Система'}:</b> ${l.message}</p>`).join(''); $('#log').scrollTop = 99999; }
 function renderNotes() { const all = [['Подозреваемые', state.suspects], ['Оружие', state.weapons], ['Комнаты', state.roomNames]]; const key = 'mansion-notes-' + gid; const saved = JSON.parse(localStorage.getItem(key) || '{}'); $('#notes').innerHTML = all.map(([title, list]) => `<section class="note-section"><h3>${title}</h3>${list.map(n => `<label><input type="checkbox" data-note="${n}" ${saved[n] ? 'checked' : ''}><span>${n}</span></label>`).join('')}</section>`).join(''); $('#notes').querySelectorAll('input').forEach(i => i.onchange = () => { saved[i.dataset.note] = i.checked; localStorage.setItem(key, JSON.stringify(saved)); }); }
 $('#startBtn').onclick = async () => { const r = await api('start'); if (r.error) alert(r.error); refresh(); };
