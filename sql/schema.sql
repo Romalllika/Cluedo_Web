@@ -20,12 +20,21 @@ CREATE TABLE games (
   status ENUM('waiting','active','finished') NOT NULL DEFAULT 'waiting',
   max_players TINYINT NOT NULL DEFAULT 6,
   current_turn_player_id INT NULL,
-  phase ENUM('join','roll','move','suggest','accuse','ended') NOT NULL DEFAULT 'join',
+  phase ENUM('join','roll','move','suggest','disprove','accuse','ended') NOT NULL DEFAULT 'join',
   dice_total TINYINT DEFAULT 0,
   solution_suspect VARCHAR(50) NULL,
   solution_weapon VARCHAR(50) NULL,
   solution_room VARCHAR(50) NULL,
   winner_user_id INT NULL,
+
+  pending_suggester_id INT NULL,
+  pending_disprover_id INT NULL,
+  pending_suspect VARCHAR(50) NULL,
+  pending_weapon VARCHAR(50) NULL,
+  pending_room VARCHAR(50) NULL,
+  shown_card_name VARCHAR(50) NULL,
+  shown_by_user_id INT NULL,
+
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY(owner_id) REFERENCES users(id)

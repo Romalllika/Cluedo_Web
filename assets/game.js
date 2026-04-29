@@ -1,5 +1,7 @@
 const gid = document.body.dataset.game;
 let state = null;
+let lastDisprovePromptKey = null;
+let lastShownNoticeKey = null;
 const $ = s => document.querySelector(s);
 const canvas = $('#mansionCanvas');
 const ctx = canvas ? canvas.getContext('2d') : null;
@@ -20,17 +22,132 @@ function render() {
   const g = state.game, ps = state.players;
   const current = ps.find(p => +p.user_id === +g.current_turn_player_id);
   $('#turnLabel').textContent = g.status === 'waiting' ? 'Ожидание старта' : g.status === 'finished' ? 'Игра завершена' : 'Ход: ' + (current ? current.username + ' / ' + current.character_name : '-');
-  $('#phaseLabel').textContent = 'Фаза: ' + g.phase + ' · кубики: ' + (g.dice_total || 0) + ' · вариант поля: ' + (state.board.variant + 1);
+  const phaseNames = {
+    join: 'ожидание',
+    roll: 'бросок кубиков',
+    move: 'движение',
+    suggest: 'предположение',
+    disprove: 'опровержение',
+    accuse: 'обвинение / завершение хода',
+    ended: 'конец игры'
+  };
+
+  $('#phaseLabel').textContent =
+    'Фаза: ' + (phaseNames[g.phase] || g.phase) +
+    ' · кубики: ' + (g.dice_total || 0) +
+    ' · вариант поля: ' + (state.board.variant + 1);
   $('#startBtn').style.display = g.status === 'waiting' ? 'inline-flex' : 'none';
   ['rollBtn', 'suggestBtn', 'accuseBtn', 'endBtn'].forEach(id => $('#' + id).style.display = (+g.current_turn_player_id === +CURRENT_USER_ID && g.status === 'active') ? 'inline-flex' : 'none');
   $('#rollBtn').disabled = g.phase !== 'roll';
   $('#suggestBtn').disabled = g.phase !== 'suggest';
   $('#accuseBtn').disabled = !['accuse', 'suggest', 'move'].includes(g.phase);
+  $('#endBtn').disabled = g.phase === 'disprove';
   renderPlayersAndSeats();
   renderCanvas();
   renderCards();
   renderLog();
   renderNotes();
+  renderDisproveFlow();
+}
+
+function renderDisproveFlow() {
+  const g = state.game;
+
+  if (g.phase !== 'disprove') {
+    lastDisprovePromptKey = null;
+  }
+
+  if (g.phase === 'disprove' && state.pending) {
+    const p = state.pending;
+
+    if (+p.disprover_id === +CURRENT_USER_ID) {
+      const key = [
+        p.suggester_id,
+        p.disprover_id,
+        p.suspect,
+        p.weapon,
+        p.room
+      ].join('|');
+
+      if (lastDisprovePromptKey !== key) {
+        lastDisprovePromptKey = key;
+        openShowCardModal(p);
+      }
+    }
+  }
+
+  if (state.shownNotice) {
+    const key = state.shownNotice.by + '|' + state.shownNotice.card;
+
+    if (lastShownNoticeKey !== key) {
+      lastShownNoticeKey = key;
+
+      openModal(
+        'Карта показана',
+        `
+          <div class="result-box">
+            <p>Игрок <b>${state.shownNotice.by}</b> опроверг ваше предположение.</p>
+            <div class="big-card">${state.shownNotice.card}</div>
+            <button id="shownOk">Понятно</button>
+          </div>
+        `
+      );
+
+      $('#shownOk').onclick = closeModal;
+    }
+  }
+}
+
+function openShowCardModal(p) {
+  const cards = p.myMatchingCards || [];
+
+  if (!cards.length) {
+    return;
+  }
+
+  openModal(
+    'Покажите карту',
+    `
+      <div class="result-box">
+        <p>
+          Игрок <b>${p.suggester_name}</b> сделал предположение:
+        </p>
+
+        <div class="suggestion-line">
+          <span>${p.suspect}</span>
+          <span>${p.weapon}</span>
+          <span>${p.room}</span>
+        </div>
+
+        <p>У вас есть подходящие карты. Выберите одну, которую хотите показать.</p>
+
+        <div class="show-card-list">
+          ${cards.map(c => `
+            <button class="show-card-choice" data-card="${c.card_name}">
+              <b>${c.card_name}</b>
+              <small>${c.card_type}</small>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    `
+  );
+
+  document.querySelectorAll('.show-card-choice').forEach(btn => {
+    btn.onclick = async () => {
+      const r = await api('showCard', {
+        card: btn.dataset.card
+      });
+
+      if (r.error) {
+        alert(r.error);
+        return;
+      }
+
+      closeModal();
+      refresh();
+    };
+  });
 }
 
 function renderPlayersAndSeats() {
@@ -245,7 +362,7 @@ function drawDoors() {
   }
 
   ctx.restore();
-}function drawStarts() { const c = meta.cell; for (const s of state.board.starts || []) { const p = cellToPx(s.x, s.y); ctx.fillStyle = s.color || '#fff'; ctx.beginPath(); ctx.arc(p.x + c / 2, p.y + c / 2, c * .23, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 3; ctx.stroke(); } }
+} function drawStarts() { const c = meta.cell; for (const s of state.board.starts || []) { const p = cellToPx(s.x, s.y); ctx.fillStyle = s.color || '#fff'; ctx.beginPath(); ctx.arc(p.x + c / 2, p.y + c / 2, c * .23, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 3; ctx.stroke(); } }
 function drawPlayers() {
   const c = meta.cell, grouped = {}; state.players.forEach(p => { const k = p.pos_x + ':' + p.pos_y; (grouped[k] ||= []).push(p); });
   Object.values(grouped).forEach(list => list.forEach((p, i) => { const base = cellToPx(+p.pos_x, +p.pos_y); const a = (Math.PI * 2 / Math.max(1, list.length)) * i; const off = list.length > 1 ? c * .18 : 0; const x = base.x + c / 2 + Math.cos(a) * off, y = base.y + c / 2 + Math.sin(a) * off; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4; ctx.fillStyle = colorForChar(p.character_name); ctx.beginPath(); ctx.arc(x, y, c * .30, 0, Math.PI * 2); ctx.fill(); ctx.lineWidth = +p.user_id === +state.game.current_turn_player_id ? 5 : 2; ctx.strokeStyle = +p.user_id === +state.game.current_turn_player_id ? '#fff' : '#211207'; ctx.stroke(); ctx.fillStyle = '#111'; ctx.font = '900 ' + Math.max(13, c * .36) + 'px Inter, Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(p.character_name[0], x, y); ctx.restore(); }));
@@ -258,7 +375,100 @@ $('#startBtn').onclick = async () => { const r = await api('start'); if (r.error
 $('#rollBtn').onclick = async () => { const dice = $('#dice'); dice.classList.add('shake'); const r = await api('roll'); setTimeout(() => dice.classList.remove('shake'), 700); if (r.error) return alert(r.error); dice.innerHTML = `<span>${r.d1}</span><span>${r.d2}</span>`; refresh(); };
 $('#endBtn').onclick = async () => { const r = await api('endTurn'); if (r.error) alert(r.error); refresh(); };
 $('#suggestBtn').onclick = () => selectTriple('Сделать предложение', false); $('#accuseBtn').onclick = () => selectTriple('Финальное обвинение', true);
-function selectTriple(title, accuse) { const roomSelect = accuse ? `<select id="mRoom">${state.roomNames.map(x => `<option>${x}</option>`).join('')}</select>` : '<p>Комната берётся автоматически по текущей комнате фишки.</p>'; openModal(title, `<div class="formgrid"><select id="mSus">${state.suspects.map(x => `<option>${x}</option>`).join('')}</select><select id="mWeap">${state.weapons.map(x => `<option>${x}</option>`).join('')}</select>${roomSelect}<button id="mSend">Подтвердить</button></div>`); $('#mSend').onclick = async () => { const data = { suspect: $('#mSus').value, weapon: $('#mWeap').value }; if (accuse) data.room = $('#mRoom').value; const r = await api(accuse ? 'accuse' : 'suggest', data); if (r.error) alert(r.error); else if (r.shown) alert('Вам показали карту: ' + r.shown.card + '\nПоказал игрок: ' + r.shown.by); else if (!accuse) alert('Никто не смог опровергнуть версию'); else alert(r.win ? 'Вы победили!' : 'Обвинение неверное, вы выбыли.'); closeModal(); refresh(); }; }
+function selectTriple(title, accuse) {
+  const roomSelect = accuse
+    ? `<select id="mRoom">${state.roomNames.map(x => `<option>${x}</option>`).join('')}</select>`
+    : '<p>Комната берётся автоматически по текущей комнате фишки.</p>';
+
+  openModal(
+    title,
+    `
+      <div class="formgrid">
+        <select id="mSus">
+          ${state.suspects.map(x => `<option>${x}</option>`).join('')}
+        </select>
+
+        <select id="mWeap">
+          ${state.weapons.map(x => `<option>${x}</option>`).join('')}
+        </select>
+
+        ${roomSelect}
+
+        <button id="mSend">Подтвердить</button>
+      </div>
+    `
+  );
+
+  $('#mSend').onclick = async () => {
+    const data = {
+      suspect: $('#mSus').value,
+      weapon: $('#mWeap').value
+    };
+
+    if (accuse) {
+      data.room = $('#mRoom').value;
+    }
+
+    const r = await api(accuse ? 'accuse' : 'suggest', data);
+
+    if (r.error) {
+      alert(r.error);
+      return;
+    }
+
+    if (!accuse && r.needsDisprove) {
+      openModal(
+        'Ожидание опровержения',
+        `
+          <div class="result-box">
+            <p>Персонаж <b>${r.movedSuspect}</b> перемещён в комнату.</p>
+            <p>Игрок <b>${r.disprover}</b> должен выбрать карту для показа.</p>
+          </div>
+        `
+      );
+
+      refresh();
+      return;
+    }
+
+    if (!accuse) {
+      openModal(
+        'Никто не опроверг',
+        `
+          <div class="result-box">
+            <p>Персонаж <b>${r.movedSuspect}</b> перемещён в комнату.</p>
+            <p>Никто не смог опровергнуть ваше предположение.</p>
+            <button id="noDisproveOk">Понятно</button>
+          </div>
+        `
+      );
+
+      $('#noDisproveOk').onclick = closeModal;
+
+      refresh();
+      return;
+    }
+
+    if (accuse) {
+      openModal(
+        r.win ? 'Победа!' : 'Обвинение неверное',
+        `
+          <div class="result-box">
+            <div class="big-card">
+              ${r.win ? 'Вы раскрыли дело!' : 'Вы ошиблись и выбыли из расследования.'}
+            </div>
+            <button id="accuseOk">Понятно</button>
+          </div>
+        `
+      );
+
+      $('#accuseOk').onclick = closeModal;
+
+      refresh();
+      return;
+    }
+  };
+} 
 const notebookTab = $('#notebookTab'), notebookDrawer = $('#notebookDrawer'), closeNotebook = $('#closeNotebook'); if (notebookTab) notebookTab.onclick = () => notebookDrawer.classList.add('open'); if (closeNotebook) closeNotebook.onclick = () => notebookDrawer.classList.remove('open');
 window.addEventListener('resize', () => { if (state) renderCanvas(); });
 refresh(); setInterval(refresh, 2500);

@@ -26,16 +26,77 @@ function is_turn($g, $uid)
 {
     return $g && (int) $g['current_turn_player_id'] === $uid && $g['status'] === 'active';
 }
-function next_turn($gid)
-{
+
+function username_by_id(int $uid): string {
+    $s = db()->prepare('SELECT username FROM users WHERE id=?');
+    $s->execute([$uid]);
+    return (string) ($s->fetchColumn() ?: 'Игрок');
+}
+
+function clear_pending_disprove(int $gid): void {
+    db()->prepare(
+        "UPDATE games 
+         SET pending_suggester_id=NULL,
+             pending_disprover_id=NULL,
+             pending_suspect=NULL,
+             pending_weapon=NULL,
+             pending_room=NULL,
+             shown_card_name=NULL,
+             shown_by_user_id=NULL
+         WHERE id=?"
+    )->execute([$gid]);
+}
+
+function matching_cards_for_user(
+    int $gid,
+    int $uid,
+    string $suspect,
+    string $weapon,
+    string $room
+): array {
+    $q = db()->prepare(
+        'SELECT card_type, card_name 
+         FROM player_cards 
+         WHERE game_id=? 
+           AND user_id=? 
+           AND card_name IN (?,?,?)
+         ORDER BY card_type, card_name'
+    );
+
+    $q->execute([$gid, $uid, $suspect, $weapon, $room]);
+
+    return $q->fetchAll();
+}
+function next_turn($gid) {
     $ps = players($gid);
     $g = game($gid);
-    $ids = array_values(array_filter(array_map(fn($p) => $p['is_eliminated'] ? null : (int) $p['user_id'], $ps)));
-    if (count($ids) === 0)
+
+    $ids = array_values(array_filter(array_map(
+        fn($p) => $p['is_eliminated'] ? null : (int) $p['user_id'],
+        $ps
+    )));
+
+    if (count($ids) === 0) {
         return;
+    }
+
     $idx = array_search((int) $g['current_turn_player_id'], $ids, true);
     $next = $ids[($idx === false ? 0 : $idx + 1) % count($ids)];
-    db()->prepare("UPDATE games SET current_turn_player_id=?, phase='roll', dice_total=0 WHERE id=?")->execute([$next, $gid]);
+
+    db()->prepare(
+        "UPDATE games 
+         SET current_turn_player_id=?,
+             phase='roll',
+             dice_total=0,
+             pending_suggester_id=NULL,
+             pending_disprover_id=NULL,
+             pending_suspect=NULL,
+             pending_weapon=NULL,
+             pending_room=NULL,
+             shown_card_name=NULL,
+             shown_by_user_id=NULL
+         WHERE id=?"
+    )->execute([$next, $gid]);
 }
 function finish_game($gid, $winner)
 {
@@ -48,25 +109,107 @@ function finish_game($gid, $winner)
 }
 if ($a === 'state') {
     $g = game($gid);
-    if (!$g)
+
+    if (!$g) {
         json_out(['error' => 'Игра не найдена']);
+    }
+
     $ps = players($gid);
-    $cards = db()->prepare('SELECT card_type,card_name FROM player_cards WHERE game_id=? AND user_id=? ORDER BY card_type,card_name');
+
+    $cards = db()->prepare(
+        'SELECT card_type,card_name 
+         FROM player_cards 
+         WHERE game_id=? AND user_id=? 
+         ORDER BY card_type,card_name'
+    );
     $cards->execute([$gid, $uid]);
-    $logs = db()->prepare('SELECT gl.*,u.username FROM game_logs gl LEFT JOIN users u ON u.id=gl.user_id WHERE gl.game_id=? ORDER BY gl.id DESC LIMIT 40');
+
+    $logs = db()->prepare(
+        'SELECT gl.*,u.username 
+         FROM game_logs gl 
+         LEFT JOIN users u ON u.id=gl.user_id 
+         WHERE gl.game_id=? 
+         ORDER BY gl.id DESC 
+         LIMIT 40'
+    );
     $logs->execute([$gid]);
+
     $me = null;
+
     foreach ($ps as $pp) {
         if ((int) $pp['user_id'] === $uid) {
             $me = $pp;
             break;
         }
     }
+
     $reachable = [];
-    if ($me && $g['phase'] === 'move' && (int) $g['current_turn_player_id'] === $uid) {
-        $reachable = reachable_targets((int) $me['pos_x'], (int) $me['pos_y'], (int) $g['dice_total'], $gid);
+
+    if (
+        $me &&
+        $g['phase'] === 'move' &&
+        (int) $g['current_turn_player_id'] === $uid
+    ) {
+        $reachable = reachable_targets(
+            (int) $me['pos_x'],
+            (int) $me['pos_y'],
+            (int) $g['dice_total'],
+            $gid
+        );
     }
-    json_out(['game' => $g, 'players' => $ps, 'myCards' => $cards->fetchAll(), 'logs' => array_reverse($logs->fetchAll()), 'board' => board_cells($gid), 'reachable' => $reachable, 'suspects' => suspects(), 'weapons' => weapons(), 'roomNames' => rooms(), 'characters' => characters()]);
+
+    $pending = null;
+
+    if ($g['phase'] === 'disprove') {
+        $pending = [
+            'suggester_id' => (int) $g['pending_suggester_id'],
+            'suggester_name' => username_by_id((int) $g['pending_suggester_id']),
+            'disprover_id' => (int) $g['pending_disprover_id'],
+            'disprover_name' => username_by_id((int) $g['pending_disprover_id']),
+            'suspect' => $g['pending_suspect'],
+            'weapon' => $g['pending_weapon'],
+            'room' => $g['pending_room'],
+            'myMatchingCards' => []
+        ];
+
+        if ((int) $g['pending_disprover_id'] === $uid) {
+            $pending['myMatchingCards'] = matching_cards_for_user(
+                $gid,
+                $uid,
+                (string) $g['pending_suspect'],
+                (string) $g['pending_weapon'],
+                (string) $g['pending_room']
+            );
+        }
+    }
+
+    $shownNotice = null;
+
+    if (
+        $g['phase'] === 'accuse' &&
+        (int) $g['pending_suggester_id'] === $uid &&
+        !empty($g['shown_card_name'])
+    ) {
+        $shownNotice = [
+            'card' => $g['shown_card_name'],
+            'by' => username_by_id((int) $g['shown_by_user_id'])
+        ];
+    }
+
+    json_out([
+        'game' => $g,
+        'players' => $ps,
+        'myCards' => $cards->fetchAll(),
+        'logs' => array_reverse($logs->fetchAll()),
+        'board' => board_cells($gid),
+        'reachable' => $reachable,
+        'pending' => $pending,
+        'shownNotice' => $shownNotice,
+        'suspects' => suspects(),
+        'weapons' => weapons(),
+        'roomNames' => rooms(),
+        'characters' => characters()
+    ]);
 }
 if ($a === 'start') {
     $g = game($gid);
@@ -135,35 +278,179 @@ if ($a === 'move') {
 }
 if ($a === 'suggest') {
     $g = game($gid);
-    if (!is_turn($g, $uid) || $g['phase'] !== 'suggest')
+
+    if (!is_turn($g, $uid) || $g['phase'] !== 'suggest') {
         json_out(['error' => 'Предложение можно сделать только после входа в комнату']);
-    $p = db()->prepare('SELECT * FROM game_players WHERE game_id=? AND user_id=?');
+    }
+
+    $p = db()->prepare(
+        'SELECT * FROM game_players WHERE game_id=? AND user_id=?'
+    );
     $p->execute([$gid, $uid]);
     $p = $p->fetch();
+
     $room = room_at((int) $p['pos_x'], (int) $p['pos_y'], $gid);
-    if (!$room)
+
+    if (!$room) {
         json_out(['error' => 'Вы не в комнате']);
+    }
+
     $sus = $_POST['suspect'] ?? '';
     $weap = $_POST['weapon'] ?? '';
-    if (!in_array($sus, suspects()) || !in_array($weap, weapons()))
+
+    if (!in_array($sus, suspects(), true) || !in_array($weap, weapons(), true)) {
         json_out(['error' => 'Неверные карты']);
+    }
+
+    /**
+     * Главная механика Cluedo:
+     * названный подозреваемый персонаж перемещается в комнату предположения.
+     */
+    $center = room_positions($gid)[$room];
+
+    db()->prepare(
+        'UPDATE game_players 
+         SET pos_x=?, pos_y=? 
+         WHERE game_id=? AND character_name=?'
+    )->execute([
+        $center[0],
+        $center[1],
+        $gid,
+        $sus
+    ]);
+
     $ps = players($gid);
     $ids = array_column($ps, 'user_id');
     $start = array_search($uid, $ids);
-    $shown = null;
+
+    $disprover = null;
+    $matching = [];
+
     for ($i = 1; $i < count($ps); $i++) {
         $other = $ps[($start + $i) % count($ps)];
-        $q = db()->prepare('SELECT card_name FROM player_cards WHERE game_id=? AND user_id=? AND card_name IN (?,?,?) LIMIT 1');
-        $q->execute([$gid, $other['user_id'], $sus, $weap, $room]);
-        $c = $q->fetch();
-        if ($c) {
-            $shown = ['by' => $other['username'], 'card' => $c['card_name']];
+
+        $cards = matching_cards_for_user(
+            $gid,
+            (int) $other['user_id'],
+            $sus,
+            $weap,
+            $room
+        );
+
+        if (count($cards) > 0) {
+            $disprover = $other;
+            $matching = $cards;
             break;
         }
     }
-    log_msg($gid, $uid, "Предложение: $sus, $weap, $room. " . ($shown ? "Карта показана игроком {$shown['by']}." : 'Никто не смог опровергнуть.'));
-    db()->prepare("UPDATE games SET phase='accuse' WHERE id=?")->execute([$gid]);
-    json_out(['ok' => 1, 'shown' => $shown, 'room' => $room]);
+
+    log_msg(
+        $gid,
+        $uid,
+        "Предложение: $sus, $weap, $room. Персонаж «$sus» перемещён в комнату."
+    );
+
+    if (!$disprover) {
+        db()->prepare(
+            "UPDATE games 
+             SET phase='accuse',
+                 pending_suggester_id=?,
+                 pending_disprover_id=NULL,
+                 pending_suspect=?,
+                 pending_weapon=?,
+                 pending_room=?,
+                 shown_card_name=NULL,
+                 shown_by_user_id=NULL
+             WHERE id=?"
+        )->execute([$uid, $sus, $weap, $room, $gid]);
+
+        log_msg($gid, null, 'Никто не смог опровергнуть предположение.');
+
+        json_out([
+            'ok' => 1,
+            'room' => $room,
+            'movedSuspect' => $sus,
+            'needsDisprove' => false
+        ]);
+    }
+
+    db()->prepare(
+        "UPDATE games 
+         SET phase='disprove',
+             pending_suggester_id=?,
+             pending_disprover_id=?,
+             pending_suspect=?,
+             pending_weapon=?,
+             pending_room=?,
+             shown_card_name=NULL,
+             shown_by_user_id=NULL
+         WHERE id=?"
+    )->execute([
+        $uid,
+        $disprover['user_id'],
+        $sus,
+        $weap,
+        $room,
+        $gid
+    ]);
+
+    log_msg(
+        $gid,
+        null,
+        'Игрок ' . $disprover['username'] . ' должен показать одну карту.'
+    );
+
+    json_out([
+        'ok' => 1,
+        'room' => $room,
+        'movedSuspect' => $sus,
+        'needsDisprove' => true,
+        'disprover' => $disprover['username'],
+        'matchingCount' => count($matching)
+    ]);
+}
+if ($a === 'showCard') {
+    $g = game($gid);
+
+    if (!$g || $g['status'] !== 'active' || $g['phase'] !== 'disprove') {
+        json_out(['error' => 'Сейчас не нужно показывать карту']);
+    }
+
+    if ((int) $g['pending_disprover_id'] !== $uid) {
+        json_out(['error' => 'Карту должен показать другой игрок']);
+    }
+
+    $card = $_POST['card'] ?? '';
+
+    $allowed = matching_cards_for_user(
+        $gid,
+        $uid,
+        (string) $g['pending_suspect'],
+        (string) $g['pending_weapon'],
+        (string) $g['pending_room']
+    );
+
+    $names = array_map(fn($c) => $c['card_name'], $allowed);
+
+    if (!in_array($card, $names, true)) {
+        json_out(['error' => 'Эту карту нельзя показать']);
+    }
+
+    db()->prepare(
+        "UPDATE games
+         SET phase='accuse',
+             shown_card_name=?,
+             shown_by_user_id=?
+         WHERE id=?"
+    )->execute([$card, $uid, $gid]);
+
+    log_msg(
+        $gid,
+        $uid,
+        'Игрок показал карту для опровержения предположения.'
+    );
+
+    json_out(['ok' => 1]);
 }
 if ($a === 'accuse') {
     $g = game($gid);
