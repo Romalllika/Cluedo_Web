@@ -202,6 +202,8 @@ function renderPlayersAndSeats() {
     taken.set(+p.seat_no, p);
   });
 
+  const meInGame = state.players.some(p => +p.user_id === +CURRENT_USER_ID);
+
   seatsBox.innerHTML = state.characters.map((c, i) => {
     const p = taken.get(i);
 
@@ -216,10 +218,14 @@ function renderPlayersAndSeats() {
       `;
     }
 
+    const href = meInGame
+      ? `change_seat.php?game_id=${gid}&seat=${i}`
+      : `join_game.php?game_id=${gid}&seat=${i}`;
+
     return `
-      <a class="seat" href="change_seat.php?game_id=${gid}&seat=${i}">
+      <a class="seat" href="${href}">
         <b>${c.name}</b>
-        <span>выбрать</span>
+        <span>${meInGame ? 'сменить' : 'занять'}</span>
       </a>
     `;
   }).join('');

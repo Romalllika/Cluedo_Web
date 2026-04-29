@@ -44,7 +44,7 @@ try {
     }
 
     $count = $db->prepare(
-        'SELECT COUNT(*) FROM game_players WHERE game_id=? FOR UPDATE'
+        'SELECT COUNT(*) FROM game_players WHERE game_id=?'
     );
     $count->execute([$gid]);
     $count = (int) $count->fetchColumn();
