@@ -746,3 +746,13 @@ td {
         inset 0 0 0 2px rgba(255,255,255,.35),
         0 18px 45px rgba(0,0,0,.28);
 }
+
+.seat.mine {
+    border-color: rgba(92,255,161,.85);
+    box-shadow: 0 0 0 3px rgba(92,255,161,.18);
+}
+
+.seat.mine span {
+    color: #a9ffc9;
+    opacity: 1;
+}

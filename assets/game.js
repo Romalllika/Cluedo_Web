@@ -206,18 +206,20 @@ function renderPlayersAndSeats() {
     const p = taken.get(i);
 
     if (p) {
+      const mine = +p.user_id === +CURRENT_USER_ID;
+
       return `
-        <div class="seat busy">
+        <div class="seat busy ${mine ? 'mine' : ''}">
           <b>${c.name}</b>
-          <span>занял ${p.username}</span>
+          <span>${mine ? 'вы выбрали' : 'занял ' + p.username}</span>
         </div>
       `;
     }
 
     return `
-      <a class="seat" href="join_game.php?game_id=${gid}&seat=${i}">
+      <a class="seat" href="change_seat.php?game_id=${gid}&seat=${i}">
         <b>${c.name}</b>
-        <span>свободно</span>
+        <span>выбрать</span>
       </a>
     `;
   }).join('');
@@ -491,7 +493,7 @@ function selectTriple(title, accuse) {
       return;
     }
   };
-} 
+}
 const notebookTab = $('#notebookTab'), notebookDrawer = $('#notebookDrawer'), closeNotebook = $('#closeNotebook'); if (notebookTab) notebookTab.onclick = () => notebookDrawer.classList.add('open'); if (closeNotebook) closeNotebook.onclick = () => notebookDrawer.classList.remove('open');
 window.addEventListener('resize', () => { if (state) renderCanvas(); });
 refresh(); setInterval(refresh, 2500);
