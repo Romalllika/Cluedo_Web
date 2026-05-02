@@ -756,3 +756,12 @@ td {
     color: #a9ffc9;
     opacity: 1;
 }
+
+.danger-btn {
+    background: linear-gradient(135deg, #6d1f1f, #d44848);
+    color: #fff;
+}
+
+.danger-btn:hover {
+    filter: brightness(1.08);
+}

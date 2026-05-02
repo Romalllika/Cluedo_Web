@@ -62,8 +62,23 @@ function render() {
     ' · кубики: ' + (g.dice_total || 0) +
     ' · вариант поля: ' + (state.board.variant + 1);
   $('#startBtn').style.display = g.status === 'waiting' ? 'inline-flex' : 'none';
-  ['rollBtn', 'suggestBtn', 'accuseBtn', 'endBtn'].forEach(id => $('#' + id).style.display = (+g.current_turn_player_id === +CURRENT_USER_ID && g.status === 'active') ? 'inline-flex' : 'none');
-  $('#rollBtn').disabled = g.phase !== 'roll';
+  ['rollBtn', 'suggestBtn', 'accuseBtn', 'endBtn'].forEach(id => {
+    $('#' + id).style.display =
+      (+g.current_turn_player_id === +CURRENT_USER_ID && g.status === 'active')
+        ? 'inline-flex'
+        : 'none';
+  });
+
+  const surrenderBtn = $('#surrenderBtn');
+
+  if (surrenderBtn) {
+    const me = state.players.find(p => +p.user_id === +CURRENT_USER_ID);
+
+    surrenderBtn.style.display =
+      g.status === 'active' && me && +me.is_eliminated === 0
+        ? 'inline-flex'
+        : 'none';
+  } $('#rollBtn').disabled = g.phase !== 'roll';
   $('#suggestBtn').disabled = g.phase !== 'suggest';
   $('#accuseBtn').disabled = !['accuse', 'suggest', 'move'].includes(g.phase);
   $('#endBtn').disabled = g.phase === 'disprove';
@@ -434,6 +449,36 @@ function renderNotes() { const all = [['Подозреваемые', state.suspe
 $('#startBtn').onclick = async () => { const r = await api('start'); if (r.error) alert(r.error); refresh(); };
 $('#rollBtn').onclick = async () => { const dice = $('#dice'); dice.classList.add('shake'); const r = await api('roll'); setTimeout(() => dice.classList.remove('shake'), 700); if (r.error) return alert(r.error); dice.innerHTML = `<span>${r.d1}</span><span>${r.d2}</span>`; refresh(); };
 $('#endBtn').onclick = async () => { const r = await api('endTurn'); if (r.error) alert(r.error); refresh(); };
+const surrenderBtn = $('#surrenderBtn');
+
+if (surrenderBtn) {
+  surrenderBtn.onclick = async () => {
+    if (!confirm('Вы точно хотите сдаться? После сдачи вы больше не сможете ходить.')) {
+      return;
+    }
+
+    const r = await api('surrender');
+
+    if (r.error) {
+      alert(r.error);
+      return;
+    }
+
+    if (r.redirect) {
+      window.location.href = r.redirect;
+      return;
+    }
+
+    if (r.finished) {
+      alert('Игра завершена.');
+      window.location.href = 'lobby.php';
+      return;
+    }
+
+    alert('Вы сдались.');
+    refresh();
+  };
+}
 $('#suggestBtn').onclick = () => selectTriple('Сделать предложение', false); $('#accuseBtn').onclick = () => selectTriple('Финальное обвинение', true);
 function selectTriple(title, accuse) {
   const roomSelect = accuse

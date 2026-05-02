@@ -98,6 +98,116 @@ function next_turn($gid) {
          WHERE id=?"
     )->execute([$next, $gid]);
 }
+
+function active_players_count(int $gid): int {
+    $q = db()->prepare(
+        'SELECT COUNT(*) 
+         FROM game_players 
+         WHERE game_id=? AND is_eliminated=0'
+    );
+
+    $q->execute([$gid]);
+
+    return (int) $q->fetchColumn();
+}
+
+function finish_game_if_needed(int $gid): bool {
+    $count = active_players_count($gid);
+
+    if ($count >= 2) {
+        return false;
+    }
+
+    $winner = db()->prepare(
+        'SELECT user_id 
+         FROM game_players 
+         WHERE game_id=? AND is_eliminated=0 
+         LIMIT 1'
+    );
+
+    $winner->execute([$gid]);
+    $winnerId = $winner->fetchColumn();
+
+    db()->prepare(
+        "UPDATE games 
+         SET status='finished',
+             phase='ended',
+             winner_user_id=?,
+             current_turn_player_id=NULL,
+             pending_suggester_id=NULL,
+             pending_disprover_id=NULL,
+             pending_suspect=NULL,
+             pending_weapon=NULL,
+             pending_room=NULL,
+             shown_card_name=NULL,
+             shown_by_user_id=NULL
+         WHERE id=?"
+    )->execute([
+        $winnerId ?: null,
+        $gid
+    ]);
+
+    if ($winnerId) {
+        log_msg($gid, (int) $winnerId, 'Игра завершена. Остался последний активный игрок.');
+    } else {
+        log_msg($gid, null, 'Игра завершена. Активных игроков не осталось.');
+    }
+
+    return true;
+}
+
+function surrender_player(int $gid, int $uid, string $reason = 'Игрок сдался.'): array {
+    $g = game($gid);
+
+    if (!$g) {
+        return ['error' => 'Игра не найдена'];
+    }
+
+    $p = db()->prepare(
+        'SELECT * FROM game_players WHERE game_id=? AND user_id=?'
+    );
+    $p->execute([$gid, $uid]);
+    $player = $p->fetch();
+
+    if (!$player) {
+        return ['error' => 'Вы не состоите в этой игре'];
+    }
+
+    if ($g['status'] === 'waiting') {
+        return [
+            'redirect' => 'leave_lobby.php?game_id=' . $gid
+        ];
+    }
+
+    if ($g['status'] !== 'active') {
+        return ['ok' => 1];
+    }
+
+    if ((int) $player['is_eliminated'] === 1) {
+        return ['ok' => 1];
+    }
+
+    db()->prepare(
+        'UPDATE game_players 
+         SET is_eliminated=1 
+         WHERE game_id=? AND user_id=?'
+    )->execute([$gid, $uid]);
+
+    log_msg($gid, $uid, $reason);
+
+    if (finish_game_if_needed($gid)) {
+        return ['ok' => 1, 'finished' => true];
+    }
+
+    $freshGame = game($gid);
+
+    if ($freshGame && (int) $freshGame['current_turn_player_id'] === $uid) {
+        next_turn($gid);
+        log_msg($gid, null, 'Ход передан следующему игроку, потому что текущий игрок выбыл.');
+    }
+
+    return ['ok' => 1];
+}
 function finish_game($gid, $winner)
 {
     $ps = players($gid);
@@ -479,3 +589,8 @@ if ($a === 'endTurn') {
     json_out(['ok' => 1]);
 }
 json_out(['error' => 'Неизвестное действие']);
+if ($a === 'surrender') {
+    $result = surrender_player($gid, $uid, 'Игрок сдался.');
+
+    json_out($result);
+}

@@ -53,7 +53,7 @@ $taken = array_column($players, 'seat_no');
                 </div>
                 <div class="actions"><button id="startBtn">Старт</button><button id="rollBtn">Бросить
                         кубики</button><button id="suggestBtn">Предложение</button><button
-                        id="accuseBtn">Обвинение</button><button id="endBtn">Конец хода</button></div>
+                        id="accuseBtn">Обвинение</button><button id="endBtn">Конец хода</button><button id="surrenderBtn" class="danger-btn">Сдаться</button></div>
             </div>
             <div class="dice" id="dice"><span>?</span><span>?</span></div>
             <div class="mansion-shell"><canvas id="mansionCanvas"></canvas>
