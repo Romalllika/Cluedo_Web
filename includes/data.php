@@ -79,7 +79,7 @@ function mansion_rooms(int $gid = 0): array {
 
         'Оранжерея' => [
             'x1' => 12, 'y1' => 0, 'x2' => 16, 'y2' => 4,
-            'door' => [12, 4],
+            'door' => [12, 5],
             'secret' => 'Гостиная',
             'theme' => 'greenhouse'
         ],
