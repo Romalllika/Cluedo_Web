@@ -65,7 +65,7 @@ function mansion_rooms(int $gid = 0): array {
     $r = [
         'Кухня' => [
             'x1' => 0, 'y1' => 0, 'x2' => 4, 'y2' => 4,
-            'door' => [4, 4],
+            'door' => [4, 5],
             'secret' => 'Кабинет',
             'theme' => 'kitchen'
         ],
