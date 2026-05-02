@@ -65,7 +65,7 @@ function mansion_rooms(int $gid = 0): array {
     $r = [
         'Кухня' => [
             'x1' => 0, 'y1' => 0, 'x2' => 4, 'y2' => 4,
-            'door' => [4, 5],
+            'door' => [4, 4],
             'secret' => 'Кабинет',
             'theme' => 'kitchen'
         ],
@@ -79,7 +79,7 @@ function mansion_rooms(int $gid = 0): array {
 
         'Оранжерея' => [
             'x1' => 12, 'y1' => 0, 'x2' => 16, 'y2' => 4,
-            'door' => [12, 5],
+            'door' => [12, 4],
             'secret' => 'Гостиная',
             'theme' => 'greenhouse'
         ],
@@ -147,7 +147,7 @@ function mansion_rooms(int $gid = 0): array {
      * Вариант 2 — ещё одно смещение дверей.
      */
     if ($v === 2) {
-        $r['Кухня']['door'] = [3, 4];
+        $r['Кухня']['door'] = [3, 5];
         $r['Бальный зал']['door'] = [10, 3];
         $r['Оранжерея']['door'] = [13, 4];
         $r['Столовая']['door'] = [4, 8];
