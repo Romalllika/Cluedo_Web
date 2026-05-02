@@ -588,9 +588,9 @@ if ($a === 'endTurn') {
     log_msg($gid, $uid, 'Ход завершён.');
     json_out(['ok' => 1]);
 }
-json_out(['error' => 'Неизвестное действие']);
 if ($a === 'surrender') {
     $result = surrender_player($gid, $uid, 'Игрок сдался.');
 
     json_out($result);
 }
+json_out(['error' => 'Неизвестное действие']);
