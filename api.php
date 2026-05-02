@@ -67,6 +67,67 @@ function matching_cards_for_user(
 
     return $q->fetchAll();
 }
+
+function auto_show_card_from_eliminated_player(
+    int $gid,
+    int $suggesterId,
+    int $disproverId,
+    string $suspect,
+    string $weapon,
+    string $room
+): ?array {
+    $cards = matching_cards_for_user(
+        $gid,
+        $disproverId,
+        $suspect,
+        $weapon,
+        $room
+    );
+
+    if (!$cards) {
+        return null;
+    }
+
+    /*
+     * Берём первую подходящую карту.
+     * Можно сделать умнее, но для автопоказа выбывшего игрока этого достаточно.
+     */
+    $card = $cards[0];
+
+    db()->prepare(
+        "UPDATE games
+         SET phase='accuse',
+             pending_suggester_id=?,
+             pending_disprover_id=?,
+             pending_suspect=?,
+             pending_weapon=?,
+             pending_room=?,
+             shown_card_name=?,
+             shown_by_user_id=?
+         WHERE id=?"
+    )->execute([
+        $suggesterId,
+        $disproverId,
+        $suspect,
+        $weapon,
+        $room,
+        $card['card_name'],
+        $disproverId,
+        $gid
+    ]);
+
+    log_msg(
+        $gid,
+        null,
+        'Предположение автоматически опровергнуто картой выбывшего игрока.'
+    );
+
+    return [
+        'card' => $card['card_name'],
+        'by_user_id' => $disproverId
+    ];
+}
+
 function next_turn($gid) {
     $ps = players($gid);
     $g = game($gid);
@@ -111,6 +172,50 @@ function active_players_count(int $gid): int {
     return (int) $q->fetchColumn();
 }
 
+function apply_game_stats_once(int $gid, ?int $winnerId): void {
+    $db = db();
+
+    $g = $db->prepare(
+        'SELECT stats_applied FROM games WHERE id=?'
+    );
+    $g->execute([$gid]);
+    $applied = (int) $g->fetchColumn();
+
+    if ($applied === 1) {
+        return;
+    }
+
+    $players = $db->prepare(
+        'SELECT user_id FROM game_players WHERE game_id=?'
+    );
+    $players->execute([$gid]);
+    $players = $players->fetchAll();
+
+    foreach ($players as $p) {
+        $pid = (int) $p['user_id'];
+
+        if ($winnerId && $pid === (int) $winnerId) {
+            $db->prepare(
+                'UPDATE users 
+                 SET games_played = games_played + 1,
+                     wins = wins + 1
+                 WHERE id=?'
+            )->execute([$pid]);
+        } else {
+            $db->prepare(
+                'UPDATE users 
+                 SET games_played = games_played + 1,
+                     losses = losses + 1
+                 WHERE id=?'
+            )->execute([$pid]);
+        }
+    }
+
+    $db->prepare(
+        'UPDATE games SET stats_applied=1 WHERE id=?'
+    )->execute([$gid]);
+}
+
 function finish_game_if_needed(int $gid): bool {
     $count = active_players_count($gid);
 
@@ -127,6 +232,7 @@ function finish_game_if_needed(int $gid): bool {
 
     $winner->execute([$gid]);
     $winnerId = $winner->fetchColumn();
+    $winnerId = $winnerId ? (int) $winnerId : null;
 
     db()->prepare(
         "UPDATE games 
@@ -143,12 +249,14 @@ function finish_game_if_needed(int $gid): bool {
              shown_by_user_id=NULL
          WHERE id=?"
     )->execute([
-        $winnerId ?: null,
+        $winnerId,
         $gid
     ]);
 
+    apply_game_stats_once($gid, $winnerId);
+
     if ($winnerId) {
-        log_msg($gid, (int) $winnerId, 'Игра завершена. Остался последний активный игрок.');
+        log_msg($gid, $winnerId, 'Игра завершена. Остался последний активный игрок.');
     } else {
         log_msg($gid, null, 'Игра завершена. Активных игроков не осталось.');
     }
@@ -399,6 +507,10 @@ if ($a === 'suggest') {
     $p->execute([$gid, $uid]);
     $p = $p->fetch();
 
+    if (!$p) {
+        json_out(['error' => 'Вы не состоите в этой игре']);
+    }
+
     $room = room_at((int) $p['pos_x'], (int) $p['pos_y'], $gid);
 
     if (!$room) {
@@ -412,9 +524,16 @@ if ($a === 'suggest') {
         json_out(['error' => 'Неверные карты']);
     }
 
-    /**
+    /*
      * Главная механика Cluedo:
      * названный подозреваемый персонаж перемещается в комнату предположения.
+     *
+     * ВАЖНО:
+     * раньше персонаж перемещался только если он был занят игроком.
+     * Сейчас перемещение должно работать и для незанятых персонажей.
+     * Для этого ниже используется отдельная таблица suspect_positions,
+     * если ты её добавишь. Но если её пока нет, оставляем перемещение
+     * только занятых фишек.
      */
     $center = room_positions($gid)[$room];
 
@@ -430,28 +549,11 @@ if ($a === 'suggest') {
     ]);
 
     $ps = players($gid);
-    $ids = array_column($ps, 'user_id');
-    $start = array_search($uid, $ids);
+    $ids = array_map(fn($pl) => (int) $pl['user_id'], $ps);
+    $start = array_search($uid, $ids, true);
 
-    $disprover = null;
-    $matching = [];
-
-    for ($i = 1; $i < count($ps); $i++) {
-        $other = $ps[($start + $i) % count($ps)];
-
-        $cards = matching_cards_for_user(
-            $gid,
-            (int) $other['user_id'],
-            $sus,
-            $weap,
-            $room
-        );
-
-        if (count($cards) > 0) {
-            $disprover = $other;
-            $matching = $cards;
-            break;
-        }
+    if ($start === false) {
+        json_out(['error' => 'Игрок не найден в порядке хода']);
     }
 
     log_msg(
@@ -460,35 +562,101 @@ if ($a === 'suggest') {
         "Предложение: $sus, $weap, $room. Персонаж «$sus» перемещён в комнату."
     );
 
-    if (!$disprover) {
+    /*
+     * Ищем первого игрока по кругу, который может опровергнуть.
+     * Если игрок активный — он выбирает карту сам.
+     * Если игрок выбыл — сервер показывает одну карту автоматически.
+     */
+    for ($i = 1; $i < count($ps); $i++) {
+        $other = $ps[($start + $i) % count($ps)];
+        $otherId = (int) $other['user_id'];
+
+        $cards = matching_cards_for_user(
+            $gid,
+            $otherId,
+            $sus,
+            $weap,
+            $room
+        );
+
+        if (count($cards) === 0) {
+            continue;
+        }
+
+        /*
+         * Выбывший игрок не может выбирать карту.
+         * Показываем первую подходящую автоматически.
+         */
+        if ((int) $other['is_eliminated'] === 1) {
+            $shown = auto_show_card_from_eliminated_player(
+                $gid,
+                $uid,
+                $otherId,
+                $sus,
+                $weap,
+                $room
+            );
+
+            json_out([
+                'ok' => 1,
+                'room' => $room,
+                'movedSuspect' => $sus,
+                'needsDisprove' => false,
+                'autoShown' => true,
+                'shown' => [
+                    'card' => $shown['card'],
+                    'by' => $other['username']
+                ]
+            ]);
+        }
+
+        /*
+         * Активный игрок выбирает карту сам.
+         */
         db()->prepare(
             "UPDATE games 
-             SET phase='accuse',
+             SET phase='disprove',
                  pending_suggester_id=?,
-                 pending_disprover_id=NULL,
+                 pending_disprover_id=?,
                  pending_suspect=?,
                  pending_weapon=?,
                  pending_room=?,
                  shown_card_name=NULL,
                  shown_by_user_id=NULL
              WHERE id=?"
-        )->execute([$uid, $sus, $weap, $room, $gid]);
+        )->execute([
+            $uid,
+            $otherId,
+            $sus,
+            $weap,
+            $room,
+            $gid
+        ]);
 
-        log_msg($gid, null, 'Никто не смог опровергнуть предположение.');
+        log_msg(
+            $gid,
+            null,
+            'Игрок ' . $other['username'] . ' должен показать одну карту.'
+        );
 
         json_out([
             'ok' => 1,
             'room' => $room,
             'movedSuspect' => $sus,
-            'needsDisprove' => false
+            'needsDisprove' => true,
+            'disprover' => $other['username'],
+            'matchingCount' => count($cards)
         ]);
     }
 
+    /*
+     * Никто не смог опровергнуть.
+     */
     db()->prepare(
         "UPDATE games 
-         SET phase='disprove',
+         SET phase='accuse',
              pending_suggester_id=?,
-             pending_disprover_id=?,
+             pending_disprover_id=NULL,
              pending_suspect=?,
              pending_weapon=?,
              pending_room=?,
@@ -497,26 +665,20 @@ if ($a === 'suggest') {
          WHERE id=?"
     )->execute([
         $uid,
-        $disprover['user_id'],
         $sus,
         $weap,
         $room,
         $gid
     ]);
 
-    log_msg(
-        $gid,
-        null,
-        'Игрок ' . $disprover['username'] . ' должен показать одну карту.'
-    );
+    log_msg($gid, null, 'Никто не смог опровергнуть предположение.');
 
     json_out([
         'ok' => 1,
         'room' => $room,
         'movedSuspect' => $sus,
-        'needsDisprove' => true,
-        'disprover' => $disprover['username'],
-        'matchingCount' => count($matching)
+        'needsDisprove' => false,
+        'noDisprove' => true
     ]);
 }
 if ($a === 'showCard') {

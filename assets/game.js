@@ -2,8 +2,10 @@ const gid = document.body.dataset.game;
 let state = null;
 let lastDisprovePromptKey = null;
 let lastShownNoticeKey = null;
+let endGameShown = false;
 let cardsRenderedOnce = false;
 let lastCardsKey = '';
+
 const $ = s => document.querySelector(s);
 const canvas = $('#mansionCanvas');
 const ctx = canvas ? canvas.getContext('2d') : null;
@@ -88,6 +90,7 @@ function render() {
   renderLog();
   renderNotes();
   renderDisproveFlow();
+  renderEndGameFlow();
 }
 
 function renderDisproveFlow() {
@@ -136,6 +139,55 @@ function renderDisproveFlow() {
       $('#shownOk').onclick = closeModal;
     }
   }
+}
+
+function renderEndGameFlow() {
+  const g = state.game;
+
+  if (g.status !== 'finished' && g.phase !== 'ended') {
+    return;
+  }
+
+  if (endGameShown) {
+    return;
+  }
+
+  endGameShown = true;
+
+  const winner = state.players.find(p => +p.user_id === +g.winner_user_id);
+  const meWon = +g.winner_user_id === +CURRENT_USER_ID;
+
+  const title = meWon
+    ? 'Победа!'
+    : 'Игра завершена';
+
+  const message = winner
+    ? `Победитель: <b>${winner.username}</b> / ${winner.character_name}`
+    : 'Игра завершена без победителя.';
+
+  openModal(
+    title,
+    `
+      <div class="result-box">
+        <div class="big-card">
+          ${meWon ? 'Вы выиграли расследование!' : 'Расследование завершено'}
+        </div>
+
+        <p>${message}</p>
+
+        ${meWon
+      ? '<p>Ваш винрейт и статистика побед обновлены.</p>'
+      : '<p>Ваш результат засчитан в статистику партии.</p>'
+    }
+
+        <button id="finishOk">Понятно</button>
+      </div>
+    `
+  );
+
+  $('#finishOk').onclick = () => {
+    window.location.href = 'lobby.php';
+  };
 }
 
 function openShowCardModal(p) {
@@ -307,58 +359,57 @@ function renderCanvas() {
 }
 function drawWood(w, h) { ctx.save(); ctx.globalAlpha = .13; for (let y = 0; y < h; y += 34) { ctx.fillStyle = y % 68 === 0 ? '#fff0bd' : '#0e0704'; ctx.fillRect(0, y, w, 2); } ctx.restore(); }
 function drawCorridors() {
-  const b = state.board;
   const c = meta.cell;
+  const paths = state.board.paths || [];
 
-  for (let y = 0; y < b.height; y++) {
-    for (let x = 0; x < b.width; x++) {
-      if (roomAt(x, y)) {
-        continue;
-      }
+  for (const path of paths) {
+    const x = +path[0];
+    const y = +path[1];
 
-      const p = cellToPx(x, y);
-      const reach = reachableCell(x, y);
+    const p = cellToPx(x, y);
+    const reach = reachableCell(x, y);
 
-      ctx.fillStyle = reach
-        ? 'rgba(92,255,161,.38)'
-        : 'rgba(255,231,185,.16)';
+    ctx.fillStyle = reach
+      ? 'rgba(92,255,161,.42)'
+      : 'rgba(255,231,185,.18)';
 
-      ctx.strokeStyle = reach
-        ? 'rgba(92,255,161,.95)'
-        : 'rgba(255,231,185,.10)';
+    ctx.strokeStyle = reach
+      ? 'rgba(92,255,161,.95)'
+      : 'rgba(255,231,185,.16)';
 
-      roundRect(
-        p.x + 4,
-        p.y + 4,
-        c - 8,
-        c - 8,
-        Math.max(10, c * 0.20)
+    roundRect(
+      p.x + 4,
+      p.y + 4,
+      c - 8,
+      c - 8,
+      Math.max(10, c * 0.20)
+    );
+
+    ctx.fill();
+    ctx.stroke();
+
+    if (reach) {
+      ctx.save();
+      ctx.fillStyle = '#fff4cd';
+      ctx.beginPath();
+      ctx.arc(
+        p.x + c / 2,
+        p.y + c / 2,
+        Math.max(4, c * 0.075),
+        0,
+        Math.PI * 2
       );
-
       ctx.fill();
-      ctx.stroke();
+      ctx.restore();
 
-      /**
-       * Точки показываем только на доступных клетках.
-       * Так поле меньше шумит визуально.
-       */
-      if (reach) {
-        ctx.save();
-        ctx.fillStyle = '#fff4cd';
-        ctx.beginPath();
-        ctx.arc(p.x + c / 2, p.y + c / 2, Math.max(4, c * 0.075), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-
-        meta.clickable.push({
-          x,
-          y,
-          px: p.x,
-          py: p.y,
-          w: c,
-          h: c
-        });
-      }
+      meta.clickable.push({
+        x,
+        y,
+        px: p.x,
+        py: p.y,
+        w: c,
+        h: c
+      });
     }
   }
 }
@@ -470,8 +521,7 @@ if (surrenderBtn) {
     }
 
     if (r.finished) {
-      alert('Игра завершена.');
-      window.location.href = 'lobby.php';
+      refresh();
       return;
     }
 
@@ -518,6 +568,25 @@ function selectTriple(title, accuse) {
 
     if (r.error) {
       alert(r.error);
+      return;
+    }
+
+    if (!accuse && r.autoShown && r.shown) {
+      openModal(
+        'Карта показана автоматически',
+        `
+      <div class="result-box">
+        <p>Предположение было опровергнуто картой выбывшего игрока.</p>
+        <p>Игрок: <b>${r.shown.by}</b></p>
+        <div class="big-card">${r.shown.card}</div>
+        <button id="autoShownOk">Понятно</button>
+      </div>
+    `
+      );
+
+      $('#autoShownOk').onclick = closeModal;
+
+      refresh();
       return;
     }
 
