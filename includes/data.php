@@ -1,6 +1,7 @@
 <?php
 
-function suspects(): array {
+function suspects(): array
+{
     return [
         'Алекс Громов',
         'Мария Скарлет',
@@ -11,7 +12,8 @@ function suspects(): array {
     ];
 }
 
-function weapons(): array {
+function weapons(): array
+{
     return [
         'Подсвечник',
         'Кинжал',
@@ -22,7 +24,8 @@ function weapons(): array {
     ];
 }
 
-function rooms(): array {
+function rooms(): array
+{
     return [
         'Кухня',
         'Бальный зал',
@@ -36,22 +39,25 @@ function rooms(): array {
     ];
 }
 
-function characters(): array {
+function characters(): array
+{
     return [
-        ['name' => 'Алекс Громов',        'x' => 8, 'y' => 9, 'color' => '#e53935'],
-        ['name' => 'Мария Скарлет',      'x' => 7, 'y' => 9, 'color' => '#d81b60'],
+        ['name' => 'Алекс Громов', 'x' => 8, 'y' => 9, 'color' => '#e53935'],
+        ['name' => 'Мария Скарлет', 'x' => 7, 'y' => 9, 'color' => '#d81b60'],
         ['name' => 'Профессор Фиолетов', 'x' => 9, 'y' => 9, 'color' => '#7e57c2'],
-        ['name' => 'Виктор Олив',        'x' => 8, 'y' => 8, 'color' => '#689f38'],
-        ['name' => 'Елена Белая',        'x' => 7, 'y' => 8, 'color' => '#eceff1'],
-        ['name' => 'София Синяя',        'x' => 9, 'y' => 8, 'color' => '#42a5f5'],
+        ['name' => 'Виктор Олив', 'x' => 8, 'y' => 8, 'color' => '#689f38'],
+        ['name' => 'Елена Белая', 'x' => 7, 'y' => 8, 'color' => '#eceff1'],
+        ['name' => 'София Синяя', 'x' => 9, 'y' => 8, 'color' => '#42a5f5'],
     ];
 }
 
-function board_variant(int $gid = 0): int {
+function board_variant(int $gid = 0): int
+{
     return $gid > 0 ? $gid % 3 : 0;
 }
 
-function board_size(int $gid = 0): array {
+function board_size(int $gid = 0): array
+{
     return ['w' => 17, 'h' => 17];
 }
 
@@ -59,68 +65,96 @@ function board_size(int $gid = 0): array {
  * Комнаты стоят плотнее и занимают почти весь периметр поля.
  * Дверь находится НА КРАЮ комнаты.
  */
-function mansion_rooms(int $gid = 0): array {
+function mansion_rooms(int $gid = 0): array
+{
     $v = board_variant($gid);
 
     $r = [
         'Кухня' => [
-            'x1' => 0, 'y1' => 0, 'x2' => 4, 'y2' => 4,
+            'x1' => 0,
+            'y1' => 0,
+            'x2' => 4,
+            'y2' => 4,
             'door' => [4, 4],
             'secret' => 'Кабинет',
             'theme' => 'kitchen'
         ],
 
         'Бальный зал' => [
-            'x1' => 5, 'y1' => 0, 'x2' => 11, 'y2' => 3,
+            'x1' => 5,
+            'y1' => 0,
+            'x2' => 11,
+            'y2' => 3,
             'door' => [8, 3],
             'secret' => null,
             'theme' => 'ballroom'
         ],
 
         'Оранжерея' => [
-            'x1' => 12, 'y1' => 0, 'x2' => 16, 'y2' => 4,
+            'x1' => 12,
+            'y1' => 0,
+            'x2' => 16,
+            'y2' => 4,
             'door' => [12, 4],
             'secret' => 'Гостиная',
             'theme' => 'greenhouse'
         ],
 
         'Столовая' => [
-            'x1' => 0, 'y1' => 5, 'x2' => 4, 'y2' => 9,
+            'x1' => 0,
+            'y1' => 5,
+            'x2' => 4,
+            'y2' => 9,
             'door' => [4, 7],
             'secret' => null,
             'theme' => 'dining'
         ],
 
         'Бильярдная' => [
-            'x1' => 12, 'y1' => 5, 'x2' => 16, 'y2' => 9,
+            'x1' => 12,
+            'y1' => 5,
+            'x2' => 16,
+            'y2' => 9,
             'door' => [12, 7],
             'secret' => null,
             'theme' => 'billiard'
         ],
 
         'Библиотека' => [
-            'x1' => 0, 'y1' => 10, 'x2' => 4, 'y2' => 12,
+            'x1' => 0,
+            'y1' => 10,
+            'x2' => 4,
+            'y2' => 12,
             'door' => [4, 11],
             'secret' => null,
             'theme' => 'library'
         ],
 
         'Гостиная' => [
-            'x1' => 0, 'y1' => 13, 'x2' => 4, 'y2' => 16,
+            'x1' => 0,
+            'y1' => 13,
+            'x2' => 4,
+            'y2' => 16,
             'door' => [4, 13],
             'secret' => 'Оранжерея',
             'theme' => 'lounge'
         ],
 
         'Холл' => [
-            'x1' => 5, 'y1' => 14, 'x2' => 11, 'y2' => 16,
+            'x1' => 5,
+            'y1' => 14,
+            'x2' => 11,
+            'y2' => 16,
             'door' => [8, 14],
             'secret' => null,
             'theme' => 'hall'
         ],
 
         'Кабинет' => [
-            'x1' => 12, 'y1' => 10, 'x2' => 16, 'y2' => 16,
+            'x1' => 12,
+            'y1' => 10,
+            'x2' => 16,
+            'y2' => 16,
             'door' => [12, 12],
             'secret' => 'Кухня',
             'theme' => 'study'
@@ -132,30 +166,50 @@ function mansion_rooms(int $gid = 0): array {
      * Комнаты остаются на тех же местах, чтобы поле не ломалось.
      */
     if ($v === 1) {
-        $r['Кухня']['door'] = [4, 3];
-        $r['Бальный зал']['door'] = [6, 3];
-        $r['Оранжерея']['door'] = [12, 3];
-        $r['Столовая']['door'] = [4, 6];
-        $r['Бильярдная']['door'] = [12, 8];
-        $r['Библиотека']['door'] = [4, 10];
-        $r['Гостиная']['door'] = [4, 14];
-        $r['Холл']['door'] = [6, 14];
-        $r['Кабинет']['door'] = [12, 13];
+
+        $r['Кухня']['door'] = [4, 4];
+
+        $r['Бальный зал']['door'] = [8, 3];
+
+        $r['Оранжерея']['door'] = [12, 4];
+
+        $r['Столовая']['door'] = [4, 7];
+
+        $r['Бильярдная']['door'] = [12, 7];
+
+        $r['Библиотека']['door'] = [4, 11];
+
+        $r['Гостиная']['door'] = [4, 13];
+
+        $r['Холл']['door'] = [8, 14];
+
+        $r['Кабинет']['door'] = [12, 12];
+
     }
 
     /**
      * Вариант 2 — ещё одно смещение дверей.
      */
     if ($v === 2) {
-        $r['Кухня']['door'] = [3, 5];
-        $r['Бальный зал']['door'] = [10, 3];
-        $r['Оранжерея']['door'] = [13, 4];
-        $r['Столовая']['door'] = [4, 8];
-        $r['Бильярдная']['door'] = [12, 6];
-        $r['Библиотека']['door'] = [4, 12];
-        $r['Гостиная']['door'] = [3, 13];
-        $r['Холл']['door'] = [10, 14];
-        $r['Кабинет']['door'] = [12, 11];
+
+        $r['Кухня']['door'] = [4, 4];
+
+        $r['Бальный зал']['door'] = [8, 3];
+
+        $r['Оранжерея']['door'] = [12, 4];
+
+        $r['Столовая']['door'] = [4, 7];
+
+        $r['Бильярдная']['door'] = [12, 7];
+
+        $r['Библиотека']['door'] = [4, 11];
+
+        $r['Гостиная']['door'] = [4, 13];
+
+        $r['Холл']['door'] = [8, 14];
+
+        $r['Кабинет']['door'] = [12, 12];
+
     }
 
     foreach ($r as $name => $room) {
@@ -169,7 +223,8 @@ function mansion_rooms(int $gid = 0): array {
  * Только эти клетки являются коридорами.
  * Всё остальное, что не комната, считается стеной/пустотой и недоступно.
  */
-function board_paths(int $gid = 0): array {
+function board_paths(int $gid = 0): array
+{
     $paths = [];
 
     $add = function (int $x, int $y) use (&$paths) {
@@ -204,7 +259,8 @@ function board_paths(int $gid = 0): array {
 
     return array_values($paths);
 }
-function board_path_keys(int $gid = 0): array {
+function board_path_keys(int $gid = 0): array
+{
     $keys = [];
 
     foreach (board_paths($gid) as $p) {
@@ -214,7 +270,8 @@ function board_path_keys(int $gid = 0): array {
     return $keys;
 }
 
-function room_positions(int $gid = 0): array {
+function room_positions(int $gid = 0): array
+{
     $out = [];
 
     foreach (mansion_rooms($gid) as $name => $r) {
@@ -227,7 +284,8 @@ function room_positions(int $gid = 0): array {
     return $out;
 }
 
-function room_at(int $x, int $y, int $gid = 0): ?string {
+function room_at(int $x, int $y, int $gid = 0): ?string
+{
     foreach (mansion_rooms($gid) as $name => $r) {
         if (
             $x >= $r['x1'] &&
@@ -242,17 +300,20 @@ function room_at(int $x, int $y, int $gid = 0): ?string {
     return null;
 }
 
-function is_inside_board(int $x, int $y, int $gid = 0): bool {
+function is_inside_board(int $x, int $y, int $gid = 0): bool
+{
     $s = board_size($gid);
 
     return $x >= 0 && $y >= 0 && $x < $s['w'] && $y < $s['h'];
 }
 
-function is_room_cell(int $x, int $y, int $gid = 0): bool {
+function is_room_cell(int $x, int $y, int $gid = 0): bool
+{
     return room_at($x, $y, $gid) !== null;
 }
 
-function room_by_door(int $x, int $y, int $gid = 0): ?string {
+function room_by_door(int $x, int $y, int $gid = 0): ?string
+{
     foreach (mansion_rooms($gid) as $room => $r) {
         $d = $r['door'];
 
@@ -264,11 +325,13 @@ function room_by_door(int $x, int $y, int $gid = 0): ?string {
     return null;
 }
 
-function is_door_cell(int $x, int $y, int $gid = 0): bool {
+function is_door_cell(int $x, int $y, int $gid = 0): bool
+{
     return room_by_door($x, $y, $gid) !== null;
 }
 
-function is_walk_cell(int $x, int $y, int $gid = 0): bool {
+function is_walk_cell(int $x, int $y, int $gid = 0): bool
+{
     if (!is_inside_board($x, $y, $gid)) {
         return false;
     }
@@ -285,7 +348,8 @@ function is_walk_cell(int $x, int $y, int $gid = 0): bool {
 /**
  * Находит клетку коридора рядом с дверью комнаты.
  */
-function door_entry_cell(string $room, int $gid = 0): ?array {
+function door_entry_cell(string $room, int $gid = 0): ?array
+{
     $rooms = mansion_rooms($gid);
 
     if (!isset($rooms[$room])) {
@@ -294,7 +358,7 @@ function door_entry_cell(string $room, int $gid = 0): ?array {
 
     $d = $rooms[$room]['door'];
 
-    foreach ([[1,0], [-1,0], [0,1], [0,-1]] as $v) {
+    foreach ([[1, 0], [-1, 0], [0, 1], [0, -1]] as $v) {
         $nx = $d[0] + $v[0];
         $ny = $d[1] + $v[1];
 
@@ -306,13 +370,15 @@ function door_entry_cell(string $room, int $gid = 0): ?array {
     return null;
 }
 
-function room_exit_cells(string $room, int $gid = 0): array {
+function room_exit_cells(string $room, int $gid = 0): array
+{
     $e = door_entry_cell($room, $gid);
 
     return $e ? [$e] : [];
 }
 
-function bfs_distances_from(int $sx, int $sy, int $gid = 0): array {
+function bfs_distances_from(int $sx, int $sy, int $gid = 0): array
+{
     $dist = [];
     $queue = [];
 
@@ -337,7 +403,7 @@ function bfs_distances_from(int $sx, int $sy, int $gid = 0): array {
         [$x, $y] = $queue[$i];
         $base = $dist["$x:$y"];
 
-        foreach ([[1,0], [-1,0], [0,1], [0,-1]] as $d) {
+        foreach ([[1, 0], [-1, 0], [0, 1], [0, -1]] as $d) {
             $nx = $x + $d[0];
             $ny = $y + $d[1];
 
@@ -357,7 +423,8 @@ function bfs_distances_from(int $sx, int $sy, int $gid = 0): array {
     return $dist;
 }
 
-function distance_to_room(string $room, array $dist, int $gid = 0): ?int {
+function distance_to_room(string $room, array $dist, int $gid = 0): ?int
+{
     $entry = door_entry_cell($room, $gid);
 
     if (!$entry) {
@@ -435,7 +502,8 @@ function reachable_targets(
     return $out;
 }
 
-function board_cells(int $gid = 0): array {
+function board_cells(int $gid = 0): array
+{
     $s = board_size($gid);
 
     return [
