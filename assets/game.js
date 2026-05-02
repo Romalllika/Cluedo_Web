@@ -303,8 +303,8 @@ function renderPlayersAndSeats() {
 function fitCanvas() {
   const box = canvas.parentElement.getBoundingClientRect();
 
-  const cssW = Math.max(720, Math.floor(box.width));
-  const cssH = Math.max(650, Math.floor(Math.min(window.innerHeight - 205, cssW * 0.95)));
+  const cssW = Math.max(840, Math.floor(box.width));
+  const cssH = Math.max(760, Math.floor(Math.min(window.innerHeight - 165, cssW * 0.82)));
 
   const ratio = window.devicePixelRatio || 1;
 
@@ -338,7 +338,7 @@ function renderCanvas() {
   /**
    * Так как поле стало 12x13, клетки станут крупнее.
    */
-  meta.cell = Math.min((w - 42) / b.width, (h - 42) / b.height);
+  meta.cell = Math.min((w - 54) / b.width, (h - 54) / b.height);
   meta.ox = (w - meta.cell * b.width) / 2;
   meta.oy = (h - meta.cell * b.height) / 2;
 

@@ -536,9 +536,9 @@ td {
 #mansionCanvas {
     display: block;
     width: 100%;
-    height: calc(100vh - 210px);
-    min-height: 680px;
-    cursor: pointer
+    height: calc(100vh - 170px);
+    min-height: 760px;
+    cursor: pointer;
 }
 
 .canvas-hint {
