@@ -354,7 +354,7 @@ function renderCanvas() {
   drawCorridors();
   drawRooms();
   drawDoors();
-  drawStarts();
+  // drawStarts();
   drawPlayers();
 }
 function drawWood(w, h) { ctx.save(); ctx.globalAlpha = .13; for (let y = 0; y < h; y += 34) { ctx.fillStyle = y % 68 === 0 ? '#fff0bd' : '#0e0704'; ctx.fillRect(0, y, w, 2); } ctx.restore(); }
@@ -463,8 +463,70 @@ function drawDoors() {
   ctx.restore();
 } function drawStarts() { const c = meta.cell; for (const s of state.board.starts || []) { const p = cellToPx(s.x, s.y); ctx.fillStyle = s.color || '#fff'; ctx.beginPath(); ctx.arc(p.x + c / 2, p.y + c / 2, c * .23, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 3; ctx.stroke(); } }
 function drawPlayers() {
-  const c = meta.cell, grouped = {}; state.players.forEach(p => { const k = p.pos_x + ':' + p.pos_y; (grouped[k] ||= []).push(p); });
-  Object.values(grouped).forEach(list => list.forEach((p, i) => { const base = cellToPx(+p.pos_x, +p.pos_y); const a = (Math.PI * 2 / Math.max(1, list.length)) * i; const off = list.length > 1 ? c * .18 : 0; const x = base.x + c / 2 + Math.cos(a) * off, y = base.y + c / 2 + Math.sin(a) * off; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4; ctx.fillStyle = colorForChar(p.character_name); ctx.beginPath(); ctx.arc(x, y, c * .30, 0, Math.PI * 2); ctx.fill(); ctx.lineWidth = +p.user_id === +state.game.current_turn_player_id ? 5 : 2; ctx.strokeStyle = +p.user_id === +state.game.current_turn_player_id ? '#fff' : '#211207'; ctx.stroke(); ctx.fillStyle = '#111'; ctx.font = '900 ' + Math.max(13, c * .36) + 'px Inter, Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(p.character_name[0], x, y); ctx.restore(); }));
+  const c = meta.cell;
+  const positions = state.characterPositions || [];
+
+  const grouped = {};
+
+  positions.forEach(p => {
+    const key = p.pos_x + ':' + p.pos_y;
+
+    if (!grouped[key]) {
+      grouped[key] = [];
+    }
+
+    grouped[key].push(p);
+  });
+
+  Object.values(grouped).forEach(list => {
+    list.forEach((p, i) => {
+      const base = cellToPx(+p.pos_x, +p.pos_y);
+
+      const angle = (Math.PI * 2 / Math.max(1, list.length)) * i;
+      const offset = list.length > 1 ? c * 0.20 : 0;
+
+      const x = base.x + c / 2 + Math.cos(angle) * offset;
+      const y = base.y + c / 2 + Math.sin(angle) * offset;
+
+      const isOwned = !!p.owner_user_id;
+      const isCurrent =
+        isOwned &&
+        +p.owner_user_id === +state.game.current_turn_player_id;
+
+      ctx.save();
+
+      if (!isOwned) {
+        ctx.globalAlpha = 0.55;
+      }
+
+      ctx.shadowColor = 'rgba(0,0,0,.5)';
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetY = 4;
+
+      ctx.fillStyle = p.color || colorForChar(p.character_name);
+
+      ctx.beginPath();
+      ctx.arc(x, y, c * 0.30, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.lineWidth = isCurrent ? 5 : 2;
+      ctx.strokeStyle = isCurrent ? '#fff' : '#211207';
+      ctx.stroke();
+
+      ctx.fillStyle = '#111';
+      ctx.font = '900 ' + Math.max(13, c * 0.34) + 'px Inter, Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      ctx.fillText(
+        p.character_name ? p.character_name[0] : '?',
+        x,
+        y
+      );
+
+      ctx.restore();
+    });
+  });
 }
 if (canvas) { canvas.addEventListener('click', async e => { if (!state || +state.game.current_turn_player_id !== +CURRENT_USER_ID || state.game.phase !== 'move') return; const r = canvas.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top; const t = meta.clickable.find(a => x >= a.px && x <= a.px + a.w && y >= a.py && y <= a.py + a.h); if (!t) return; const res = await api('move', { x: t.x, y: t.y }); if (res.error) return alert(res.error); refresh(); }); }
 function renderCards() {

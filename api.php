@@ -16,6 +16,87 @@ function log_msg($gid, $uid, $msg)
     $s = db()->prepare('INSERT INTO game_logs(game_id,user_id,message) VALUES(?,?,?)');
     $s->execute([$gid, $uid, $msg]);
 }
+
+function ensure_character_positions(int $gid): void
+{
+    $insert = db()->prepare(
+        'INSERT IGNORE INTO game_character_positions
+            (game_id, character_name, pos_x, pos_y)
+         VALUES
+            (?,?,?,?)'
+    );
+
+    foreach (characters() as $c) {
+        $insert->execute([
+            $gid,
+            $c['name'],
+            (int) $c['x'],
+            (int) $c['y']
+        ]);
+    }
+}
+
+function set_character_position(
+    int $gid,
+    string $characterName,
+    int $x,
+    int $y
+): void {
+    ensure_character_positions($gid);
+
+    db()->prepare(
+        'UPDATE game_character_positions
+         SET pos_x=?, pos_y=?
+         WHERE game_id=? AND character_name=?'
+    )->execute([
+                $x,
+                $y,
+                $gid,
+                $characterName
+            ]);
+}
+
+function character_positions(int $gid): array
+{
+    ensure_character_positions($gid);
+
+    $q = db()->prepare(
+        'SELECT 
+            gcp.character_name,
+            gcp.pos_x,
+            gcp.pos_y,
+            gp.user_id AS owner_user_id,
+            u.username AS owner_username,
+            gp.is_eliminated
+         FROM game_character_positions gcp
+         LEFT JOIN game_players gp
+            ON gp.game_id = gcp.game_id
+           AND gp.character_name = gcp.character_name
+         LEFT JOIN users u
+            ON u.id = gp.user_id
+         WHERE gcp.game_id=?
+         ORDER BY gcp.id ASC'
+    );
+
+    $q->execute([$gid]);
+
+    $positions = $q->fetchAll();
+
+    $colors = [];
+
+    foreach (characters() as $c) {
+        $colors[$c['name']] = $c['color'];
+    }
+
+    foreach ($positions as &$p) {
+        $p['color'] = $colors[$p['character_name']] ?? '#f5c542';
+    }
+
+    unset($p);
+
+    return $positions;
+}
+
 function players($gid)
 {
     $s = db()->prepare('SELECT gp.*,u.username FROM game_players gp JOIN users u ON u.id=gp.user_id WHERE gp.game_id=? ORDER BY gp.turn_order');
@@ -27,13 +108,15 @@ function is_turn($g, $uid)
     return $g && (int) $g['current_turn_player_id'] === $uid && $g['status'] === 'active';
 }
 
-function username_by_id(int $uid): string {
+function username_by_id(int $uid): string
+{
     $s = db()->prepare('SELECT username FROM users WHERE id=?');
     $s->execute([$uid]);
     return (string) ($s->fetchColumn() ?: 'Игрок');
 }
 
-function clear_pending_disprove(int $gid): void {
+function clear_pending_disprove(int $gid): void
+{
     db()->prepare(
         "UPDATE games 
          SET pending_suggester_id=NULL,
@@ -106,15 +189,15 @@ function auto_show_card_from_eliminated_player(
              shown_by_user_id=?
          WHERE id=?"
     )->execute([
-        $suggesterId,
-        $disproverId,
-        $suspect,
-        $weapon,
-        $room,
-        $card['card_name'],
-        $disproverId,
-        $gid
-    ]);
+                $suggesterId,
+                $disproverId,
+                $suspect,
+                $weapon,
+                $room,
+                $card['card_name'],
+                $disproverId,
+                $gid
+            ]);
 
     log_msg(
         $gid,
@@ -128,7 +211,8 @@ function auto_show_card_from_eliminated_player(
     ];
 }
 
-function next_turn($gid) {
+function next_turn($gid)
+{
     $ps = players($gid);
     $g = game($gid);
 
@@ -160,7 +244,8 @@ function next_turn($gid) {
     )->execute([$next, $gid]);
 }
 
-function active_players_count(int $gid): int {
+function active_players_count(int $gid): int
+{
     $q = db()->prepare(
         'SELECT COUNT(*) 
          FROM game_players 
@@ -172,7 +257,8 @@ function active_players_count(int $gid): int {
     return (int) $q->fetchColumn();
 }
 
-function apply_game_stats_once(int $gid, ?int $winnerId): void {
+function apply_game_stats_once(int $gid, ?int $winnerId): void
+{
     $db = db();
 
     $g = $db->prepare(
@@ -216,7 +302,8 @@ function apply_game_stats_once(int $gid, ?int $winnerId): void {
     )->execute([$gid]);
 }
 
-function finish_game_if_needed(int $gid): bool {
+function finish_game_if_needed(int $gid): bool
+{
     $count = active_players_count($gid);
 
     if ($count >= 2) {
@@ -249,9 +336,9 @@ function finish_game_if_needed(int $gid): bool {
              shown_by_user_id=NULL
          WHERE id=?"
     )->execute([
-        $winnerId,
-        $gid
-    ]);
+                $winnerId,
+                $gid
+            ]);
 
     apply_game_stats_once($gid, $winnerId);
 
@@ -264,7 +351,8 @@ function finish_game_if_needed(int $gid): bool {
     return true;
 }
 
-function surrender_player(int $gid, int $uid, string $reason = 'Игрок сдался.'): array {
+function surrender_player(int $gid, int $uid, string $reason = 'Игрок сдался.'): array
+{
     $g = game($gid);
 
     if (!$g) {
@@ -423,6 +511,7 @@ if ($a === 'state') {
         'reachable' => $reachable,
         'pending' => $pending,
         'shownNotice' => $shownNotice,
+        'characterPositions' => character_positions($gid),
         'suspects' => suspects(),
         'weapons' => weapons(),
         'roomNames' => rooms(),
@@ -466,6 +555,15 @@ if ($a === 'roll') {
     $d2 = random_int(1, 6);
     db()->prepare("UPDATE games SET dice_total=?, phase='move' WHERE id=?")->execute([$d1 + $d2, $gid]);
     log_msg($gid, $uid, "Бросок кубиков: $d1 + $d2 = " . ($d1 + $d2));
+
+    db()->prepare(
+
+        'DELETE FROM game_character_positions WHERE game_id=?'
+
+    )->execute([$gid]);
+
+    ensure_character_positions($gid);
+
     json_out(['ok' => 1, 'd1' => $d1, 'd2' => $d2]);
 }
 if ($a === 'move') {
@@ -490,6 +588,12 @@ if ($a === 'move') {
         $y = $center[1];
     }
     db()->prepare('UPDATE game_players SET pos_x=?,pos_y=? WHERE game_id=? AND user_id=?')->execute([$x, $y, $gid, $uid]);
+    set_character_position(
+        $gid,
+        $p['character_name'],
+        $x,
+        $y
+    );
     db()->prepare("UPDATE games SET phase=? WHERE id=?")->execute([$room ? 'suggest' : 'accuse', $gid]);
     log_msg($gid, $uid, 'Фишка перемещена' . ($room ? ' в комнату «' . $room . '»' : '') . '. Потрачено очков: ' . $dist . '.');
     json_out(['ok' => 1, 'room' => $room, 'distance' => $dist]);
@@ -542,11 +646,18 @@ if ($a === 'suggest') {
          SET pos_x=?, pos_y=? 
          WHERE game_id=? AND character_name=?'
     )->execute([
-        $center[0],
-        $center[1],
+                $center[0],
+                $center[1],
+                $gid,
+                $sus
+            ]);
+
+    set_character_position(
         $gid,
-        $sus
-    ]);
+        $sus,
+        $center[0],
+        $center[1]
+    );
 
     $ps = players($gid);
     $ids = array_map(fn($pl) => (int) $pl['user_id'], $ps);
@@ -625,13 +736,13 @@ if ($a === 'suggest') {
                  shown_by_user_id=NULL
              WHERE id=?"
         )->execute([
-            $uid,
-            $otherId,
-            $sus,
-            $weap,
-            $room,
-            $gid
-        ]);
+                    $uid,
+                    $otherId,
+                    $sus,
+                    $weap,
+                    $room,
+                    $gid
+                ]);
 
         log_msg(
             $gid,
@@ -664,12 +775,12 @@ if ($a === 'suggest') {
              shown_by_user_id=NULL
          WHERE id=?"
     )->execute([
-        $uid,
-        $sus,
-        $weap,
-        $room,
-        $gid
-    ]);
+                $uid,
+                $sus,
+                $weap,
+                $room,
+                $gid
+            ]);
 
     log_msg($gid, null, 'Никто не смог опровергнуть предположение.');
 
