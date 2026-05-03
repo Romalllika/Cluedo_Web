@@ -58,23 +58,22 @@ function render() {
     accuse: 'обвинение / завершение хода',
     ended: 'конец игры'
   };
-
-  $('#phaseLabel').textContent =
+  let phaseText =
     'Фаза: ' + (phaseNames[g.phase] || g.phase) +
     ' · кубики: ' + (g.dice_total || 0) +
     ' · вариант поля: ' + (state.board.variant + 1);
-  const afkLimit =
-    g.phase === 'disprove'
-      ? state.afkDisproveSeconds
-      : state.afkTurnSeconds;
-
-  const left = Math.max(0, afkLimit - (state.phaseAge || 0));
-  const mm = String(Math.floor(left / 60)).padStart(2, '0');
-  const ss = String(left % 60).padStart(2, '0');
-
   if (g.status === 'active') {
-    $('#phaseLabel').textContent += ` · AFK: ${mm}:${ss}`;
+    const afkLimit =
+      g.phase === 'disprove'
+        ? state.afkDisproveSeconds
+        : state.afkTurnSeconds;
+    const left = Math.max(0, afkLimit - (state.phaseAge || 0));
+    const mm = String(Math.floor(left / 60)).padStart(2, '0');
+    const ss = String(left % 60).padStart(2, '0');
+    phaseText += ` · AFK: ${mm}:${ss}`;
+
   }
+  $('#phaseLabel').textContent = phaseText;
   $('#startBtn').style.display = g.status === 'waiting' ? 'inline-flex' : 'none';
   ['rollBtn', 'suggestBtn', 'accuseBtn', 'endBtn'].forEach(id => {
     $('#' + id).style.display =
