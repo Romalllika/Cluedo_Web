@@ -2,6 +2,7 @@ const gid = document.body.dataset.game;
 let state = null;
 let afkLocalTimer = null;
 let afkDeadlineTs = null;
+let afkTimerKey = null;
 let lastDisprovePromptKey = null;
 let lastShownNoticeKey = null;
 let endGameShown = false;
@@ -62,6 +63,7 @@ function stopAfkTimer() {
   }
 
   afkDeadlineTs = null;
+  afkTimerKey = null;
 
   const box = $('#afkTimer');
 
@@ -77,6 +79,20 @@ function startAfkTimer(limit, age, phase) {
   if (!box) {
     return;
   }
+
+  const startedAt = state.game.phase_started_at || '';
+  const newKey = `${state.game.id}|${phase}|${startedAt}|${limit}`;
+
+  /**
+   * ВАЖНО:
+   * Если это та же самая фаза, не пересоздаём таймер.
+   * Иначе он будет каждые 2.5 секунды возвращаться на 03:00.
+   */
+  if (afkTimerKey === newKey && afkLocalTimer) {
+    return;
+  }
+
+  afkTimerKey = newKey;
 
   if (afkLocalTimer) {
     clearInterval(afkLocalTimer);
@@ -94,7 +110,10 @@ function startAfkTimer(limit, age, phase) {
     : 'AFK до автопропуска';
 
   const tick = () => {
-    const secondsLeft = Math.max(0, Math.ceil((afkDeadlineTs - Date.now()) / 1000));
+    const secondsLeft = Math.max(
+      0,
+      Math.ceil((afkDeadlineTs - Date.now()) / 1000)
+    );
 
     box.style.display = 'inline-flex';
     box.textContent = `${label}: ${formatTimeLeft(secondsLeft)}`;
@@ -103,7 +122,6 @@ function startAfkTimer(limit, age, phase) {
       clearInterval(afkLocalTimer);
       afkLocalTimer = null;
 
-      // Через секунду просим сервер проверить AFK и сменить фазу/ход.
       setTimeout(refresh, 1000);
     }
   };
