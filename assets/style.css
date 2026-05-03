@@ -765,3 +765,17 @@ td {
 .danger-btn:hover {
     filter: brightness(1.08);
 }
+
+.afk-timer {
+    display: none;
+    margin-top: 6px;
+    padding: 7px 12px;
+    width: fit-content;
+    border-radius: 999px;
+    background: rgba(245, 197, 66, .16);
+    border: 1px solid rgba(245, 197, 66, .35);
+    color: #fff0bd;
+    font-weight: 800;
+    font-size: 14px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.18);
+}

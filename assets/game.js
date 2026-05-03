@@ -1,5 +1,7 @@
 const gid = document.body.dataset.game;
 let state = null;
+let afkLocalTimer = null;
+let afkDeadlineTs = null;
 let lastDisprovePromptKey = null;
 let lastShownNoticeKey = null;
 let endGameShown = false;
@@ -45,6 +47,71 @@ async function refresh() {
   render();
 }
 
+function formatTimeLeft(seconds) {
+  const safe = Math.max(0, Number(seconds) || 0);
+  const mm = String(Math.floor(safe / 60)).padStart(2, '0');
+  const ss = String(safe % 60).padStart(2, '0');
+
+  return `${mm}:${ss}`;
+}
+
+function stopAfkTimer() {
+  if (afkLocalTimer) {
+    clearInterval(afkLocalTimer);
+    afkLocalTimer = null;
+  }
+
+  afkDeadlineTs = null;
+
+  const box = $('#afkTimer');
+
+  if (box) {
+    box.textContent = '';
+    box.style.display = 'none';
+  }
+}
+
+function startAfkTimer(limit, age, phase) {
+  const box = $('#afkTimer');
+
+  if (!box) {
+    return;
+  }
+
+  if (afkLocalTimer) {
+    clearInterval(afkLocalTimer);
+    afkLocalTimer = null;
+  }
+
+  const safeLimit = Number(limit) || 0;
+  const safeAge = Number(age) || 0;
+  const left = Math.max(0, safeLimit - safeAge);
+
+  afkDeadlineTs = Date.now() + left * 1000;
+
+  const label = phase === 'disprove'
+    ? 'Автопоказ карты через'
+    : 'AFK до автопропуска';
+
+  const tick = () => {
+    const secondsLeft = Math.max(0, Math.ceil((afkDeadlineTs - Date.now()) / 1000));
+
+    box.style.display = 'inline-flex';
+    box.textContent = `${label}: ${formatTimeLeft(secondsLeft)}`;
+
+    if (secondsLeft <= 0) {
+      clearInterval(afkLocalTimer);
+      afkLocalTimer = null;
+
+      // Через секунду просим сервер проверить AFK и сменить фазу/ход.
+      setTimeout(refresh, 1000);
+    }
+  };
+
+  tick();
+  afkLocalTimer = setInterval(tick, 1000);
+}
+
 function render() {
   const g = state.game, ps = state.players;
   console.log('AFK debug:', {
@@ -70,18 +137,23 @@ function render() {
     'Фаза: ' + (phaseNames[g.phase] || g.phase) +
     ' · кубики: ' + (g.dice_total || 0) +
     ' · вариант поля: ' + (state.board.variant + 1);
+
+  $('#phaseLabel').textContent = phaseText;
+
   if (g.status === 'active') {
     const afkLimit =
       g.phase === 'disprove'
         ? state.afkDisproveSeconds
         : state.afkTurnSeconds;
-    const left = Math.max(0, afkLimit - (state.phaseAge || 0));
-    const mm = String(Math.floor(left / 60)).padStart(2, '0');
-    const ss = String(left % 60).padStart(2, '0');
-    phaseText += ` · AFK: ${mm}:${ss}`;
 
+    startAfkTimer(
+      afkLimit,
+      state.phaseAge || 0,
+      g.phase
+    );
+  } else {
+    stopAfkTimer();
   }
-  $('#phaseLabel').textContent = phaseText;
   $('#startBtn').style.display = g.status === 'waiting' ? 'inline-flex' : 'none';
   ['rollBtn', 'suggestBtn', 'accuseBtn', 'endBtn'].forEach(id => {
     $('#' + id).style.display =

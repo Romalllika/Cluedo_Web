@@ -50,6 +50,7 @@ $taken = array_column($players, 'seat_no');
             <div class="toolbar">
                 <div><b id="turnLabel">Загрузка...</b>
                     <p id="phaseLabel"></p>
+                    <div id="afkTimer" class="afk-timer"></div>
                 </div>
                 <div class="actions"><button id="startBtn">Старт</button><button id="rollBtn">Бросить
                         кубики</button><button id="suggestBtn">Предложение</button><button
