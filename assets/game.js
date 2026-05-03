@@ -47,6 +47,14 @@ async function refresh() {
 
 function render() {
   const g = state.game, ps = state.players;
+  console.log('AFK debug:', {
+    status: g.status,
+    phase: g.phase,
+    phaseAge: state.phaseAge,
+    turnLimit: state.afkTurnSeconds,
+    disproveLimit: state.afkDisproveSeconds,
+    phaseStartedAt: g.phase_started_at
+  });
   const current = ps.find(p => +p.user_id === +g.current_turn_player_id);
   $('#turnLabel').textContent = g.status === 'waiting' ? 'Ожидание старта' : g.status === 'finished' ? 'Игра завершена' : 'Ход: ' + (current ? current.username + ' / ' + current.character_name : '-');
   const phaseNames = {
