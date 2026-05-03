@@ -198,6 +198,7 @@ function render() {
   renderCards();
   renderLog();
   renderNotes();
+  renderShownHistory();
   renderDisproveFlow();
   renderEndGameFlow();
 }
@@ -233,7 +234,7 @@ function renderDisproveFlow() {
 
     if (lastShownNoticeKey !== key) {
       lastShownNoticeKey = key;
-
+      addShownHistory(state.shownNotice.card, state.shownNotice.by);
       openModal(
         'Карта показана',
         `
@@ -668,6 +669,59 @@ function renderCards() {
 }
 function renderLog() { $('#log').innerHTML = state.logs.map(l => `<p><b>${l.username || 'Система'}:</b> ${l.message}</p>`).join(''); $('#log').scrollTop = 99999; }
 function renderNotes() { const all = [['Подозреваемые', state.suspects], ['Оружие', state.weapons], ['Комнаты', state.roomNames]]; const key = 'mansion-notes-' + gid; const saved = JSON.parse(localStorage.getItem(key) || '{}'); $('#notes').innerHTML = all.map(([title, list]) => `<section class="note-section"><h3>${title}</h3>${list.map(n => `<label><input type="checkbox" data-note="${n}" ${saved[n] ? 'checked' : ''}><span>${n}</span></label>`).join('')}</section>`).join(''); $('#notes').querySelectorAll('input').forEach(i => i.onchange = () => { saved[i.dataset.note] = i.checked; localStorage.setItem(key, JSON.stringify(saved)); }); }
+function shownHistoryKey() {
+  return 'mansion-shown-history-' + gid + '-' + CURRENT_USER_ID;
+}
+
+function loadShownHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(shownHistoryKey()) || '[]');
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveShownHistory(items) {
+  localStorage.setItem(shownHistoryKey(), JSON.stringify(items));
+}
+
+function addShownHistory(card, by) {
+  const items = loadShownHistory();
+
+  const exists = items.some(x => x.card === card && x.by === by);
+
+  if (!exists) {
+    items.unshift({
+      card,
+      by,
+      time: new Date().toLocaleTimeString()
+    });
+  }
+
+  saveShownHistory(items.slice(0, 20));
+}
+
+function renderShownHistory() {
+  const box = $('#shownHistory');
+
+  if (!box) {
+    return;
+  }
+
+  const items = loadShownHistory();
+
+  if (!items.length) {
+    box.innerHTML = '<p class="muted">Пока никто не показывал вам карты.</p>';
+    return;
+  }
+
+  box.innerHTML = items.map(item => `
+    <div class="shown-history-item">
+      <b>${item.card}</b>
+      <span>${item.by} · ${item.time}</span>
+    </div>
+  `).join('');
+}
 $('#startBtn').onclick = async () => { const r = await api('start'); if (r.error) alert(r.error); refresh(); };
 $('#rollBtn').onclick = async () => { const dice = $('#dice'); dice.classList.add('shake'); const r = await api('roll'); setTimeout(() => dice.classList.remove('shake'), 700); if (r.error) return alert(r.error); dice.innerHTML = `<span>${r.d1}</span><span>${r.d2}</span>`; refresh(); };
 $('#endBtn').onclick = async () => { const r = await api('endTurn'); if (r.error) alert(r.error); refresh(); };
@@ -735,84 +789,165 @@ function selectTriple(title, accuse) {
       data.room = $('#mRoom').value;
     }
 
-    const r = await api(accuse ? 'accuse' : 'suggest', data);
-
-    if (r.error) {
-      alert(r.error);
-      return;
-    }
-
-    if (!accuse && r.autoShown && r.shown) {
-      openModal(
-        'Карта показана автоматически',
-        `
-      <div class="result-box">
-        <p>Предположение было опровергнуто картой выбывшего игрока.</p>
-        <p>Игрок: <b>${r.shown.by}</b></p>
-        <div class="big-card">${r.shown.card}</div>
-        <button id="autoShownOk">Понятно</button>
-      </div>
-    `
-      );
-
-      $('#autoShownOk').onclick = closeModal;
-
-      refresh();
-      return;
-    }
-
-    if (!accuse && r.needsDisprove) {
-      openModal(
-        'Ожидание опровержения',
-        `
-          <div class="result-box">
-            <p>Персонаж <b>${r.movedSuspect}</b> перемещён в комнату.</p>
-            <p>Игрок <b>${r.disprover}</b> должен выбрать карту для показа.</p>
-          </div>
-        `
-      );
-
-      refresh();
-      return;
-    }
-
-    if (!accuse) {
-      openModal(
-        'Никто не опроверг',
-        `
-          <div class="result-box">
-            <p>Персонаж <b>${r.movedSuspect}</b> перемещён в комнату.</p>
-            <p>Никто не смог опровергнуть ваше предположение.</p>
-            <button id="noDisproveOk">Понятно</button>
-          </div>
-        `
-      );
-
-      $('#noDisproveOk').onclick = closeModal;
-
-      refresh();
-      return;
-    }
-
     if (accuse) {
       openModal(
-        r.win ? 'Победа!' : 'Обвинение неверное',
+        'Подтвердите обвинение',
         `
           <div class="result-box">
-            <div class="big-card">
-              ${r.win ? 'Вы раскрыли дело!' : 'Вы ошиблись и выбыли из расследования.'}
+            <p>Вы собираетесь сделать финальное обвинение:</p>
+
+            <div class="suggestion-line">
+              <span>${data.suspect}</span>
+              <span>${data.weapon}</span>
+              <span>${data.room}</span>
             </div>
-            <button id="accuseOk">Понятно</button>
+
+            <p><b>Важно:</b> если обвинение неверное, вы выбываете из расследования.</p>
+
+            <div class="modal-actions">
+              <button id="confirmAccuseBtn" class="danger-btn">Да, обвинить</button>
+              <button id="cancelAccuseBtn">Отмена</button>
+            </div>
           </div>
         `
       );
 
-      $('#accuseOk').onclick = closeModal;
+      $('#cancelAccuseBtn').onclick = () => {
+        closeModal();
+        selectTriple('Финальное обвинение', true);
+      };
 
-      refresh();
+      $('#confirmAccuseBtn').onclick = async () => {
+        const r = await api('accuse', data);
+        handleTripleResult(r, true);
+      };
+
       return;
     }
+
+    const r = await api('suggest', data);
+    handleTripleResult(r, false);
   };
+}
+function handleTripleResult(r, accuse) {
+  if (r.error) {
+    alert(r.error);
+    return;
+  }
+
+  if (!accuse && r.autoShown && r.shown) {
+    addShownHistory(r.shown.card, r.shown.by);
+    openModal(
+      'Карта показана автоматически',
+      `
+        <div class="result-box">
+          <p>Предположение было опровергнуто картой выбывшего игрока.</p>
+          <p>Игрок: <b>${r.shown.by}</b></p>
+          <div class="big-card">${r.shown.card}</div>
+
+          <div class="modal-actions">
+            <button id="autoShownAccuse">Сделать обвинение</button>
+            <button id="autoShownEnd">Завершить ход</button>
+          </div>
+        </div>
+      `
+    );
+
+    $('#autoShownAccuse').onclick = () => {
+      closeModal();
+      selectTriple('Финальное обвинение', true);
+    };
+
+    $('#autoShownEnd').onclick = async () => {
+      const end = await api('endTurn');
+
+      if (end.error) {
+        alert(end.error);
+        return;
+      }
+
+      closeModal();
+      refresh();
+    };
+
+    refresh();
+    return;
+  }
+
+  if (!accuse && r.needsDisprove) {
+    openModal(
+      'Ожидание опровержения',
+      `
+        <div class="result-box">
+          <p>Персонаж <b>${r.movedSuspect}</b> перемещён в комнату.</p>
+          <p>Игрок <b>${r.disprover}</b> должен выбрать карту для показа.</p>
+        </div>
+      `
+    );
+
+    refresh();
+    return;
+  }
+
+  if (!accuse) {
+    openModal(
+      'Никто не опроверг',
+      `
+        <div class="result-box">
+          <p>Персонаж <b>${r.movedSuspect}</b> перемещён в комнату.</p>
+          <p>Никто из игроков не смог показать карту.</p>
+          <p>Теперь вы можете сделать финальное обвинение или завершить ход.</p>
+
+          <div class="modal-actions">
+            <button id="afterSuggestAccuse">Сделать обвинение</button>
+            <button id="afterSuggestEnd">Завершить ход</button>
+          </div>
+        </div>
+      `
+    );
+
+    $('#afterSuggestAccuse').onclick = () => {
+      closeModal();
+      selectTriple('Финальное обвинение', true);
+    };
+
+    $('#afterSuggestEnd').onclick = async () => {
+      const end = await api('endTurn');
+
+      if (end.error) {
+        alert(end.error);
+        return;
+      }
+
+      closeModal();
+      refresh();
+    };
+
+    refresh();
+    return;
+  }
+
+  if (accuse) {
+    openModal(
+      r.win ? 'Победа!' : 'Обвинение неверное',
+      `
+        <div class="result-box">
+          <div class="big-card">
+            ${r.win ? 'Вы раскрыли дело!' : 'Вы ошиблись и выбыли из расследования.'}
+          </div>
+          <button id="accuseOk">Понятно</button>
+        </div>
+      `
+    );
+
+    $('#accuseOk').onclick = () => {
+      closeModal();
+      refresh();
+    };
+
+    refresh();
+    return;
+  }
 }
 const notebookTab = $('#notebookTab'), notebookDrawer = $('#notebookDrawer'), closeNotebook = $('#closeNotebook'); if (notebookTab) notebookTab.onclick = () => notebookDrawer.classList.add('open'); if (closeNotebook) closeNotebook.onclick = () => notebookDrawer.classList.remove('open');
 window.addEventListener('resize', () => { if (state) renderCanvas(); });

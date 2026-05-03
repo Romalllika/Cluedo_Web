@@ -779,3 +779,48 @@ td {
     font-size: 14px;
     box-shadow: 0 8px 24px rgba(0,0,0,.18);
 }
+
+.modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.modal-actions button {
+    flex: 1;
+    min-width: 160px;
+}
+
+.shown-history {
+    padding: 0 22px 28px 56px;
+}
+
+.shown-history h3 {
+    font-family: Georgia, serif;
+    color: #5a3214;
+    margin: 0 0 12px;
+    border-bottom: 1px solid rgba(80,40,10,.25);
+    padding-bottom: 6px;
+}
+
+.shown-history-item {
+    display: grid;
+    gap: 3px;
+    padding: 8px 0;
+    border-bottom: 1px dashed rgba(80,40,10,.22);
+}
+
+.shown-history-item b {
+    color: #2a1c0f;
+}
+
+.shown-history-item span {
+    color: rgba(42,28,15,.72);
+    font-size: 13px;
+}
+
+.muted {
+    opacity: .65;
+    color: #2a1c0f;
+}
