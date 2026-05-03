@@ -457,13 +457,20 @@ function add_player_afk_miss(int $gid, int $uid): int
     return (int) $q->fetchColumn();
 }
 
-function phase_age_seconds($g): int
-{
-    if (!$g || empty($g['phase_started_at'])) {
+function phase_age_seconds($g): int {
+    if (!$g || empty($g['id']) || empty($g['phase_started_at'])) {
         return 0;
     }
 
-    return max(0, time() - strtotime($g['phase_started_at']));
+    $q = db()->prepare(
+        'SELECT GREATEST(0, TIMESTAMPDIFF(SECOND, phase_started_at, NOW()))
+         FROM games
+         WHERE id=?'
+    );
+
+    $q->execute([(int) $g['id']]);
+
+    return (int) $q->fetchColumn();
 }
 
 function auto_show_pending_disprove_card(array $g): bool
