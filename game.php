@@ -72,10 +72,12 @@ $taken = array_column($players, 'seat_no');
             <div class="notebook-head">
                 <h2>Детективный блокнот</h2><button id="closeNotebook" type="button">×</button>
             </div>
-            <div id="notes" class="notes notebook-paper"></div>
-            <div class="shown-history">
-                <h3>Мне показывали</h3>
-                <div id="shownHistory"></div>
+            <div class="notebook-paper">
+                <div id="notes" class="notes"></div>
+                <div class="shown-history">
+                    <h3>Мне показывали</h3>
+                    <div id="shownHistory"></div>
+                </div>
             </div>
         </aside>
     </main>

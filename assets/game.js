@@ -684,24 +684,25 @@ function renderNotes() {
   $('#notes').innerHTML = all.map(([title, list]) => `
     <section class="note-section">
       <h3>${title}</h3>
+
       ${list.map(n => `
-        <label class="note-row">
-          <input 
-            type="checkbox" 
-            data-note="${n}" 
-            ${saved[n] ? 'checked' : ''}
-          >
+        <div class="note-row">
+          <label class="note-check">
+            <input 
+              type="checkbox" 
+              data-note="${n}" 
+              ${saved[n] ? 'checked' : ''}
+            >
+            <span>${n}</span>
+          </label>
 
-          <span>${n}</span>
-
-          <input
-            class="note-text"
-            type="text"
+          <span
+            class="note-mark"
+            contenteditable="true"
             data-note-text="${n}"
-            value="${escapeAttr(textSaved[n] || '')}"
-            placeholder="пометка"
-          >
-        </label>
+            data-placeholder="пометка"
+          >${escapeHtml(textSaved[n] || '')}</span>
+        </div>
       `).join('')}
     </section>
   `).join('');
@@ -713,13 +714,14 @@ function renderNotes() {
     };
   });
 
-  $('#notes').querySelectorAll('.note-text').forEach(input => {
-    input.oninput = () => {
-      textSaved[input.dataset.noteText] = input.value;
+  $('#notes').querySelectorAll('.note-mark').forEach(el => {
+    el.oninput = () => {
+      textSaved[el.dataset.noteText] = el.textContent.trim();
       localStorage.setItem(textKey, JSON.stringify(textSaved));
     };
   });
-} function shownHistoryKey() {
+}
+function shownHistoryKey() {
   return 'mansion-shown-history-' + gid + '-' + CURRENT_USER_ID;
 }
 function escapeAttr(value) {
@@ -728,6 +730,14 @@ function escapeAttr(value) {
     .replaceAll('"', '&quot;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;');
+}
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }
 function loadShownHistory() {
   try {
