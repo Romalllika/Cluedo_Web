@@ -12,13 +12,15 @@ const AFK_TURN_SECONDS = 180;
 const AFK_DISPROVE_SECONDS = 120;
 const AFK_MAX_MISSES = 2;
 
-function game(int $gid) {
+function game(int $gid)
+{
     $s = db()->prepare('SELECT * FROM games WHERE id=?');
     $s->execute([$gid]);
     return $s->fetch();
 }
 
-function players(int $gid): array {
+function players(int $gid): array
+{
     $s = db()->prepare(
         'SELECT gp.*, u.username
          FROM game_players gp
@@ -30,22 +32,26 @@ function players(int $gid): array {
     return $s->fetchAll();
 }
 
-function log_msg(int $gid, ?int $uid, string $msg): void {
+function log_msg(int $gid, ?int $uid, string $msg): void
+{
     $s = db()->prepare('INSERT INTO game_logs(game_id,user_id,message) VALUES(?,?,?)');
     $s->execute([$gid, $uid, $msg]);
 }
 
-function is_turn($g, int $uid): bool {
+function is_turn($g, int $uid): bool
+{
     return $g && (int) $g['current_turn_player_id'] === $uid && $g['status'] === 'active';
 }
 
-function username_by_id(int $uid): string {
+function username_by_id(int $uid): string
+{
     $s = db()->prepare('SELECT username FROM users WHERE id=?');
     $s->execute([$uid]);
     return (string) ($s->fetchColumn() ?: 'Игрок');
 }
 
-function clear_pending_disprove(int $gid): void {
+function clear_pending_disprove(int $gid): void
+{
     db()->prepare(
         "UPDATE games
          SET pending_suggester_id=NULL,
@@ -59,7 +65,8 @@ function clear_pending_disprove(int $gid): void {
     )->execute([$gid]);
 }
 
-function ensure_character_positions(int $gid): void {
+function ensure_character_positions(int $gid): void
+{
     $insert = db()->prepare(
         'INSERT IGNORE INTO game_character_positions
             (game_id, character_name, pos_x, pos_y)
@@ -77,7 +84,8 @@ function ensure_character_positions(int $gid): void {
     }
 }
 
-function reset_character_positions(int $gid): void {
+function reset_character_positions(int $gid): void
+{
     db()->prepare('DELETE FROM game_character_positions WHERE game_id=?')->execute([$gid]);
     ensure_character_positions($gid);
 
@@ -106,7 +114,8 @@ function reset_character_positions(int $gid): void {
     }
 }
 
-function set_character_position(int $gid, string $characterName, int $x, int $y): void {
+function set_character_position(int $gid, string $characterName, int $x, int $y): void
+{
     ensure_character_positions($gid);
 
     db()->prepare(
@@ -116,7 +125,8 @@ function set_character_position(int $gid, string $characterName, int $x, int $y)
     )->execute([$x, $y, $gid, $characterName]);
 }
 
-function character_positions(int $gid): array {
+function character_positions(int $gid): array
+{
     ensure_character_positions($gid);
 
     $q = db()->prepare(
@@ -205,15 +215,15 @@ function auto_show_card_from_eliminated_player(
              shown_by_user_id=?
          WHERE id=?"
     )->execute([
-        $suggesterId,
-        $disproverId,
-        $suspect,
-        $weapon,
-        $room,
-        $card['card_name'],
-        $disproverId,
-        $gid
-    ]);
+                $suggesterId,
+                $disproverId,
+                $suspect,
+                $weapon,
+                $room,
+                $card['card_name'],
+                $disproverId,
+                $gid
+            ]);
 
     log_msg($gid, null, 'Предположение автоматически опровергнуто картой выбывшего игрока.');
 
@@ -223,7 +233,8 @@ function auto_show_card_from_eliminated_player(
     ];
 }
 
-function next_turn(int $gid): void {
+function next_turn(int $gid): void
+{
     $ps = players($gid);
     $g = game($gid);
 
@@ -260,7 +271,8 @@ function next_turn(int $gid): void {
     )->execute([$next, $gid]);
 }
 
-function active_players_count(int $gid): int {
+function active_players_count(int $gid): int
+{
     $q = db()->prepare(
         'SELECT COUNT(*)
          FROM game_players
@@ -272,7 +284,8 @@ function active_players_count(int $gid): int {
     return (int) $q->fetchColumn();
 }
 
-function apply_game_stats_once(int $gid, ?int $winnerId): void {
+function apply_game_stats_once(int $gid, ?int $winnerId): void
+{
     $db = db();
 
     $g = $db->prepare('SELECT stats_applied FROM games WHERE id=?');
@@ -309,7 +322,8 @@ function apply_game_stats_once(int $gid, ?int $winnerId): void {
     $db->prepare('UPDATE games SET stats_applied=1 WHERE id=?')->execute([$gid]);
 }
 
-function finish_game(int $gid, ?int $winnerId): void {
+function finish_game(int $gid, ?int $winnerId): void
+{
     db()->prepare(
         "UPDATE games
          SET status='finished',
@@ -330,7 +344,8 @@ function finish_game(int $gid, ?int $winnerId): void {
     apply_game_stats_once($gid, $winnerId);
 }
 
-function finish_game_if_needed(int $gid): bool {
+function finish_game_if_needed(int $gid): bool
+{
     $count = active_players_count($gid);
 
     if ($count >= 2) {
@@ -359,7 +374,8 @@ function finish_game_if_needed(int $gid): bool {
     return true;
 }
 
-function surrender_player(int $gid, int $uid, string $reason = 'Игрок сдался.'): array {
+function surrender_player(int $gid, int $uid, string $reason = 'Игрок сдался.'): array
+{
     $g = game($gid);
 
     if (!$g) {
@@ -408,11 +424,13 @@ function surrender_player(int $gid, int $uid, string $reason = 'Игрок сд�
     return ['ok' => 1];
 }
 
-function set_phase_timer(int $gid): void {
+function set_phase_timer(int $gid): void
+{
     db()->prepare('UPDATE games SET phase_started_at=NOW() WHERE id=?')->execute([$gid]);
 }
 
-function reset_player_afk(int $gid, int $uid): void {
+function reset_player_afk(int $gid, int $uid): void
+{
     db()->prepare(
         'UPDATE game_players
          SET afk_misses=0
@@ -420,7 +438,8 @@ function reset_player_afk(int $gid, int $uid): void {
     )->execute([$gid, $uid]);
 }
 
-function add_player_afk_miss(int $gid, int $uid): int {
+function add_player_afk_miss(int $gid, int $uid): int
+{
     db()->prepare(
         'UPDATE game_players
          SET afk_misses=afk_misses+1
@@ -438,7 +457,8 @@ function add_player_afk_miss(int $gid, int $uid): int {
     return (int) $q->fetchColumn();
 }
 
-function phase_age_seconds($g): int {
+function phase_age_seconds($g): int
+{
     if (!$g || empty($g['phase_started_at'])) {
         return 0;
     }
@@ -446,7 +466,8 @@ function phase_age_seconds($g): int {
     return max(0, time() - strtotime($g['phase_started_at']));
 }
 
-function auto_show_pending_disprove_card(array $g): bool {
+function auto_show_pending_disprove_card(array $g): bool
+{
     $gid = (int) $g['id'];
     $disproverId = (int) $g['pending_disprover_id'];
 
@@ -487,10 +508,10 @@ function auto_show_pending_disprove_card(array $g): bool {
              shown_by_user_id=?
          WHERE id=?"
     )->execute([
-        $card['card_name'],
-        $disproverId,
-        $gid
-    ]);
+                $card['card_name'],
+                $disproverId,
+                $gid
+            ]);
 
     add_player_afk_miss($gid, $disproverId);
 
@@ -499,7 +520,8 @@ function auto_show_pending_disprove_card(array $g): bool {
     return true;
 }
 
-function check_afk_timeout(int $gid): void {
+function check_afk_timeout(int $gid): void
+{
     $g = game($gid);
 
     if (!$g || $g['status'] !== 'active') {
@@ -757,12 +779,12 @@ if ($a === 'start') {
              shown_by_user_id=NULL
          WHERE id=?"
     )->execute([
-        $ps[0]['user_id'],
-        $sol[0],
-        $sol[1],
-        $sol[2],
-        $gid
-    ]);
+                $ps[0]['user_id'],
+                $sol[0],
+                $sol[1],
+                $sol[2],
+                $gid
+            ]);
 
     log_msg($gid, $uid, 'Игра началась. Тайное дело спрятано в конверте.');
 
@@ -885,6 +907,9 @@ if ($a === 'suggest') {
     if (!in_array($sus, suspects(), true) || !in_array($weap, weapons(), true)) {
         json_out(['error' => 'Неверные карты']);
     }
+    if ($sus === $p['character_name']) {
+        json_out(['error' => 'Нельзя делать предположение на самого себя']);
+    }
 
     $center = room_positions($gid)[$room];
 
@@ -893,11 +918,11 @@ if ($a === 'suggest') {
          SET pos_x=?, pos_y=?
          WHERE game_id=? AND character_name=?'
     )->execute([
-        $center[0],
-        $center[1],
-        $gid,
-        $sus
-    ]);
+                $center[0],
+                $center[1],
+                $gid,
+                $sus
+            ]);
 
     set_character_position($gid, $sus, $center[0], $center[1]);
 
@@ -952,13 +977,13 @@ if ($a === 'suggest') {
                  shown_by_user_id=NULL
              WHERE id=?"
         )->execute([
-            $uid,
-            $otherId,
-            $sus,
-            $weap,
-            $room,
-            $gid
-        ]);
+                    $uid,
+                    $otherId,
+                    $sus,
+                    $weap,
+                    $room,
+                    $gid
+                ]);
 
         reset_player_afk($gid, $uid);
         log_msg($gid, null, 'Игрок ' . $other['username'] . ' должен показать одну карту.');

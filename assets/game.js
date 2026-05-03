@@ -668,11 +668,67 @@ function renderCards() {
   cardsRenderedOnce = true;
 }
 function renderLog() { $('#log').innerHTML = state.logs.map(l => `<p><b>${l.username || 'Система'}:</b> ${l.message}</p>`).join(''); $('#log').scrollTop = 99999; }
-function renderNotes() { const all = [['Подозреваемые', state.suspects], ['Оружие', state.weapons], ['Комнаты', state.roomNames]]; const key = 'mansion-notes-' + gid; const saved = JSON.parse(localStorage.getItem(key) || '{}'); $('#notes').innerHTML = all.map(([title, list]) => `<section class="note-section"><h3>${title}</h3>${list.map(n => `<label><input type="checkbox" data-note="${n}" ${saved[n] ? 'checked' : ''}><span>${n}</span></label>`).join('')}</section>`).join(''); $('#notes').querySelectorAll('input').forEach(i => i.onchange = () => { saved[i.dataset.note] = i.checked; localStorage.setItem(key, JSON.stringify(saved)); }); }
-function shownHistoryKey() {
+function renderNotes() {
+  const all = [
+    ['Подозреваемые', state.suspects],
+    ['Оружие', state.weapons],
+    ['Комнаты', state.roomNames]
+  ];
+
+  const checkKey = 'mansion-notes-' + gid;
+  const textKey = 'mansion-note-texts-' + gid;
+
+  const saved = JSON.parse(localStorage.getItem(checkKey) || '{}');
+  const textSaved = JSON.parse(localStorage.getItem(textKey) || '{}');
+
+  $('#notes').innerHTML = all.map(([title, list]) => `
+    <section class="note-section">
+      <h3>${title}</h3>
+      ${list.map(n => `
+        <label class="note-row">
+          <input 
+            type="checkbox" 
+            data-note="${n}" 
+            ${saved[n] ? 'checked' : ''}
+          >
+
+          <span>${n}</span>
+
+          <input
+            class="note-text"
+            type="text"
+            data-note-text="${n}"
+            value="${escapeAttr(textSaved[n] || '')}"
+            placeholder="пометка"
+          >
+        </label>
+      `).join('')}
+    </section>
+  `).join('');
+
+  $('#notes').querySelectorAll('input[type="checkbox"]').forEach(input => {
+    input.onchange = () => {
+      saved[input.dataset.note] = input.checked;
+      localStorage.setItem(checkKey, JSON.stringify(saved));
+    };
+  });
+
+  $('#notes').querySelectorAll('.note-text').forEach(input => {
+    input.oninput = () => {
+      textSaved[input.dataset.noteText] = input.value;
+      localStorage.setItem(textKey, JSON.stringify(textSaved));
+    };
+  });
+} function shownHistoryKey() {
   return 'mansion-shown-history-' + gid + '-' + CURRENT_USER_ID;
 }
-
+function escapeAttr(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+}
 function loadShownHistory() {
   try {
     return JSON.parse(localStorage.getItem(shownHistoryKey()) || '[]');
@@ -756,6 +812,12 @@ if (surrenderBtn) {
 }
 $('#suggestBtn').onclick = () => selectTriple('Сделать предложение', false); $('#accuseBtn').onclick = () => selectTriple('Финальное обвинение', true);
 function selectTriple(title, accuse) {
+  const me = state.players.find(p => +p.user_id === +CURRENT_USER_ID);
+  const myCharacter = me ? me.character_name : null;
+  const suspectOptions = state.suspects
+    .filter(x => accuse || x !== myCharacter)
+    .map(x => `<option>${x}</option>`)
+    .join('');
   const roomSelect = accuse
     ? `<select id="mRoom">${state.roomNames.map(x => `<option>${x}</option>`).join('')}</select>`
     : '<p>Комната берётся автоматически по текущей комнате фишки.</p>';
@@ -765,7 +827,7 @@ function selectTriple(title, accuse) {
     `
       <div class="formgrid">
         <select id="mSus">
-          ${state.suspects.map(x => `<option>${x}</option>`).join('')}
+          ${suspectOptions}
         </select>
 
         <select id="mWeap">
