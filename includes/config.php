@@ -1,17 +1,21 @@
 <?php
 session_start();
 
-$dbHost = 'localhost';
-$dbName = 'cluedo_web';
+include '../.env';
+
+$dbHost = $_ENV['DB_HOST'];
+$dbName = $_ENV['DB_NAME'];
+// $dbUser = $_ENV['DB_USER'];
+// $dbPass = $_ENV['DB_PASS'];
 
 if (PHP_OS_FAMILY === 'Darwin') {
     // Mac / AMPPS
-    $dbUser = 'root';
-    $dbPass = 'mysql';
+    $dbUser = $_ENV['DB_USER_LOCAL'];
+    $dbPass = $_ENV['DB_PASS_LOCAL'];
 } else {
     // Debian server
-    $dbUser = 'webuser';
-    $dbPass = '12345';
+    $dbUser = $_ENV['DB_USER_SERVER'];
+    $dbPass = $_ENV['DB_PASS_SERVER'];
 }
 
 function db(): PDO {
