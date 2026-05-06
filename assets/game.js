@@ -172,8 +172,8 @@ function render() {
 
   // Показываем кнопку для тайного прохода, если игрок в нужной комнате
   const currentPlayer = state.players.find(p => +p.user_id === +CURRENT_USER_ID);
-  const currentRoom = room_at(+currentPlayer.pos_x, +currentPlayer.pos_y, g.id);
-  const secretRoom = g.rooms[currentRoom]?.secret;
+  const currentRoom = state.rooms(+currentPlayer.pos_x, +currentPlayer.pos_y, g.id);
+  const secretRoom = state.rooms[currentRoom]?.secret;
 
   if (secretRoom) {
     $('#secretPassageBtn').style.display = 'inline-flex';
