@@ -32,7 +32,7 @@ async function refresh() {
     if (!fatalGameErrorShown) {
       fatalGameErrorShown = true;
 
-      alert(state.error);
+      showErrorNotification(state.error);
 
       if (
         state.error === 'Игра не найдена' ||
@@ -215,7 +215,7 @@ $('#secretPassageBtn').onclick = async () => {
   const secretRoom = state.game.rooms[currentRoom]?.secret;
 
   if (!secretRoom) {
-    alert('Нет тайного прохода в этой комнате');
+    showErrorNotification('Нет тайного прохода в этой комнате');
     return;
   }
 
@@ -226,7 +226,7 @@ $('#secretPassageBtn').onclick = async () => {
   const res = await api('move', { x: roomCenter[0], y: roomCenter[1] });
 
   if (res.error) {
-    alert(res.error);
+    showErrorNotification(res.error);
     return;
   }
 
@@ -372,7 +372,7 @@ function openShowCardModal(p) {
       });
 
       if (r.error) {
-        alert(r.error);
+        showErrorNotification(r.error);
         return;
       }
 
@@ -668,7 +668,7 @@ function drawPlayers() {
     });
   });
 }
-if (canvas) { canvas.addEventListener('click', async e => { if (!state || +state.game.current_turn_player_id !== +CURRENT_USER_ID || state.game.phase !== 'move') return; const r = canvas.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top; const t = meta.clickable.find(a => x >= a.px && x <= a.px + a.w && y >= a.py && y <= a.py + a.h); if (!t) return; const res = await api('move', { x: t.x, y: t.y }); if (res.error) return alert(res.error); refresh(); }); }
+if (canvas) { canvas.addEventListener('click', async e => { if (!state || +state.game.current_turn_player_id !== +CURRENT_USER_ID || state.game.phase !== 'move') return; const r = canvas.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top; const t = meta.clickable.find(a => x >= a.px && x <= a.px + a.w && y >= a.py && y <= a.py + a.h); if (!t) return; const res = await api('move', { x: t.x, y: t.y }); if (res.error) return showErrorNotification(res.error); refresh(); }); }
 function renderCards() {
   const cardsKey = state.myCards
     .map(c => c.card_type + ':' + c.card_name)
@@ -818,9 +818,9 @@ function renderShownHistory() {
     </div>
   `).join('');
 }
-$('#startBtn').onclick = async () => { const r = await api('start'); if (r.error) alert(r.error); refresh(); };
-$('#rollBtn').onclick = async () => { const dice = $('#dice'); dice.classList.add('shake'); const r = await api('roll'); setTimeout(() => dice.classList.remove('shake'), 700); if (r.error) return alert(r.error); dice.innerHTML = `<span>${r.d1}</span><span>${r.d2}</span>`; refresh(); };
-$('#endBtn').onclick = async () => { const r = await api('endTurn'); if (r.error) alert(r.error); refresh(); };
+$('#startBtn').onclick = async () => { const r = await api('start'); if (r.error) showErrorNotification(r.error); refresh(); };
+$('#rollBtn').onclick = async () => { const dice = $('#dice'); dice.classList.add('shake'); const r = await api('roll'); setTimeout(() => dice.classList.remove('shake'), 700); if (r.error) return showErrorNotification(r.error); dice.innerHTML = `<span>${r.d1}</span><span>${r.d2}</span>`; refresh(); };
+$('#endBtn').onclick = async () => { const r = await api('endTurn'); if (r.error) showErrorNotification(r.error); refresh(); };
 const surrenderBtn = $('#surrenderBtn');
 
 if (surrenderBtn) {
@@ -832,7 +832,7 @@ if (surrenderBtn) {
     const r = await api('surrender');
 
     if (r.error) {
-      alert(r.error);
+      showErrorNotification(r.error);
       return;
     }
 
@@ -846,7 +846,7 @@ if (surrenderBtn) {
       return;
     }
 
-    alert('Вы сдались.');
+    showModalNotification('Вы сдались.');
     refresh();
   };
 }
@@ -933,7 +933,7 @@ function selectTriple(title, accuse) {
 }
 function handleTripleResult(r, accuse) {
   if (r.error) {
-    alert(r.error);
+    showErrorNotification(r.error);
     return;
   }
 
@@ -964,7 +964,7 @@ function handleTripleResult(r, accuse) {
       const end = await api('endTurn');
 
       if (end.error) {
-        alert(end.error);
+        showErrorNotification(end.error);
         return;
       }
 
@@ -1017,7 +1017,7 @@ function handleTripleResult(r, accuse) {
       const end = await api('endTurn');
 
       if (end.error) {
-        alert(end.error);
+        showErrorNotification(end.error);
         return;
       }
 
@@ -1050,6 +1050,36 @@ function handleTripleResult(r, accuse) {
     refresh();
     return;
   }
+}
+// модалки для уведомлений и ошибках
+function showModalNotification(title, message, callback) {
+  openModal(
+    title,
+    `
+      <div class="result-box">
+        <p>${message}</p>
+        <button id="modalOk">Понятно</button>
+      </div>
+    `
+  );
+
+  $('#modalOk').onclick = () => {
+    closeModal();
+    if (callback) callback();
+  };
+}
+function showErrorNotification(message) {
+  openModal(
+    'Ошибка',
+    `
+      <div class="result-box">
+        <p>${message}</p>
+        <button id="modalErrorOk">Закрыть</button>
+      </div>
+    `
+  );
+
+  $('#modalErrorOk').onclick = closeModal;
 }
 const notebookTab = $('#notebookTab'), notebookDrawer = $('#notebookDrawer'), closeNotebook = $('#closeNotebook'); if (notebookTab) notebookTab.onclick = () => notebookDrawer.classList.add('open'); if (closeNotebook) closeNotebook.onclick = () => notebookDrawer.classList.remove('open');
 window.addEventListener('resize', () => { if (state) renderCanvas(); });
