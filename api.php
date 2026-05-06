@@ -851,14 +851,41 @@ if ($a === 'move') {
         json_out(['error' => 'Не хватает очков кубика. Нужно: ' . $dist . ', выпало: ' . $g['dice_total']]);
     }
 
+    // Проверяем, есть ли секретный проход
     $room = room_at($x, $y, $gid);
 
     if ($room) {
-        $center = room_positions($gid)[$room];
-        $x = $center[0];
-        $y = $center[1];
+        // Если есть тайный проход в комнату
+        $secretRoom = $g['rooms'][$room]['secret'] ?? null;
+
+        if ($secretRoom) {
+            // Перемещаем игрока через тайный проход
+            $center = room_positions($gid)[$secretRoom];
+            $x = $center[0];
+            $y = $center[1];
+
+            db()->prepare(
+                'UPDATE game_players
+                 SET pos_x=?, pos_y=?
+                 WHERE game_id=? AND user_id=?'
+            )->execute([$x, $y, $gid, $uid]);
+
+            set_character_position($gid, $p['character_name'], $x, $y);
+
+            // Логируем перемещение
+            log_msg($gid, $uid, 'Фишка перемещена через тайный проход в комнату «' . $secretRoom . '». Потрачено очков: ' . $dist . '.');
+
+            json_out(['ok' => 1, 'room' => $secretRoom, 'distance' => $dist]);
+            return; // Тайный проход — сразу завершение
+        } else {
+            // Просто обычное перемещение в комнату
+            $center = room_positions($gid)[$room];
+            $x = $center[0];
+            $y = $center[1];
+        }
     }
 
+    // Обычное перемещение
     db()->prepare(
         'UPDATE game_players
          SET pos_x=?, pos_y=?
@@ -867,6 +894,7 @@ if ($a === 'move') {
 
     set_character_position($gid, $p['character_name'], $x, $y);
 
+    // Обновляем фазу игры
     db()->prepare(
         "UPDATE games
          SET phase=?,
@@ -876,6 +904,7 @@ if ($a === 'move') {
 
     reset_player_afk($gid, $uid);
 
+    // Логируем обычное перемещение
     log_msg(
         $gid,
         $uid,

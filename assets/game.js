@@ -132,16 +132,11 @@ function startAfkTimer(limit, age, phase) {
 
 function render() {
   const g = state.game, ps = state.players;
-  console.log('AFK debug:', {
-    status: g.status,
-    phase: g.phase,
-    phaseAge: state.phaseAge,
-    turnLimit: state.afkTurnSeconds,
-    disproveLimit: state.afkDisproveSeconds,
-    phaseStartedAt: g.phase_started_at
-  });
   const current = ps.find(p => +p.user_id === +g.current_turn_player_id);
-  $('#turnLabel').textContent = g.status === 'waiting' ? 'Ожидание старта' : g.status === 'finished' ? 'Игра завершена' : 'Ход: ' + (current ? current.username + ' / ' + current.character_name : '-');
+
+  $('#turnLabel').textContent =
+    g.status === 'waiting' ? 'Ожидание старта' : g.status === 'finished' ? 'Игра завершена' : 'Ход: ' + (current ? current.username + ' / ' + current.character_name : '-');
+  
   const phaseNames = {
     join: 'ожидание',
     roll: 'бросок кубиков',
@@ -151,6 +146,7 @@ function render() {
     accuse: 'обвинение / завершение хода',
     ended: 'конец игры'
   };
+
   let phaseText =
     'Фаза: ' + (phaseNames[g.phase] || g.phase) +
     ' · кубики: ' + (g.dice_total || 0) +
@@ -158,6 +154,7 @@ function render() {
 
   $('#phaseLabel').textContent = phaseText;
 
+  // Включаем таймер AFK
   if (g.status === 'active') {
     const afkLimit =
       g.phase === 'disprove'
@@ -172,6 +169,18 @@ function render() {
   } else {
     stopAfkTimer();
   }
+
+  // Показываем кнопку для тайного прохода, если игрок в нужной комнате
+  const currentPlayer = state.players.find(p => +p.user_id === +CURRENT_USER_ID);
+  const currentRoom = room_at(+currentPlayer.pos_x, +currentPlayer.pos_y, g.id);
+  const secretRoom = g.rooms[currentRoom]?.secret;
+
+  if (secretRoom) {
+    $('#secretPassageBtn').style.display = 'inline-flex';
+  } else {
+    $('#secretPassageBtn').style.display = 'none';
+  }
+
   $('#startBtn').style.display = g.status === 'waiting' ? 'inline-flex' : 'none';
   ['rollBtn', 'suggestBtn', 'accuseBtn', 'endBtn'].forEach(id => {
     $('#' + id).style.display =
@@ -181,18 +190,15 @@ function render() {
   });
 
   const surrenderBtn = $('#surrenderBtn');
-
   if (surrenderBtn) {
-    const me = state.players.find(p => +p.user_id === +CURRENT_USER_ID);
+    surrenderBtn.style.display = g.status === 'active' ? 'inline-flex' : 'none';
+  }
 
-    surrenderBtn.style.display =
-      g.status === 'active' && me && +me.is_eliminated === 0
-        ? 'inline-flex'
-        : 'none';
-  } $('#rollBtn').disabled = g.phase !== 'roll';
+  $('#rollBtn').disabled = g.phase !== 'roll';
   $('#suggestBtn').disabled = g.phase !== 'suggest';
   $('#accuseBtn').disabled = !['accuse', 'suggest', 'move'].includes(g.phase);
   $('#endBtn').disabled = g.phase === 'disprove';
+
   renderPlayersAndSeats();
   renderCanvas();
   renderCards();
@@ -202,6 +208,30 @@ function render() {
   renderDisproveFlow();
   renderEndGameFlow();
 }
+
+$('#secretPassageBtn').onclick = async () => {
+  const currentPlayer = state.players.find(p => +p.user_id === +CURRENT_USER_ID);
+  const currentRoom = room_at(+currentPlayer.pos_x, +currentPlayer.pos_y, state.game.id);
+  const secretRoom = state.game.rooms[currentRoom]?.secret;
+
+  if (!secretRoom) {
+    alert('Нет тайного прохода в этой комнате');
+    return;
+  }
+
+  // Перемещаем игрока в комнату с тайным проходом
+  const roomCenter = room_positions(state.game.id)[secretRoom];
+
+  // Отправляем на сервер
+  const res = await api('move', { x: roomCenter[0], y: roomCenter[1] });
+
+  if (res.error) {
+    alert(res.error);
+    return;
+  }
+
+  refresh(); // Обновление интерфейса
+};
 
 function renderDisproveFlow() {
   const g = state.game;
