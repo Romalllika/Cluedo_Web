@@ -10,12 +10,12 @@ $dbName = $_ENV['DB_NAME'];
 
 if (PHP_OS_FAMILY === 'Darwin') {
     // Mac / AMPPS
-    $dbUser = $_ENV['DB_USER_LOCAL'];
-    $dbPass = $_ENV['DB_PASS_LOCAL'];
+    $dbUser = 'root';
+    $dbPass = 'mysql';
 } else {
     // Debian server
-    $dbUser = $_ENV['DB_USER_SERVER'];
-    $dbPass = $_ENV['DB_PASS_SERVER'];
+    $dbUser = 'webuser';
+    $dbPass = '12345';
 }
 
 function db(): PDO {
