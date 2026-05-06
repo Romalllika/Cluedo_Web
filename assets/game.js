@@ -199,30 +199,6 @@ function render() {
   renderEndGameFlow();
 }
 
-$('#secretPassageBtn').onclick = async () => {
-  const currentPlayer = state.players.find(p => +p.user_id === +CURRENT_USER_ID);
-  const currentRoom = room_at(+currentPlayer.pos_x, +currentPlayer.pos_y, state.game.id);
-  const secretRoom = state.game.rooms[currentRoom]?.secret;
-
-  if (!secretRoom) {
-    showErrorNotification('Нет тайного прохода в этой комнате');
-    return;
-  }
-
-  // Перемещаем игрока в комнату с тайным проходом
-  const roomCenter = room_positions(state.game.id)[secretRoom];
-
-  // Отправляем на сервер
-  const res = await api('move', { x: roomCenter[0], y: roomCenter[1] });
-
-  if (res.error) {
-    showErrorNotification(res.error);
-    return;
-  }
-
-  refresh(); // Обновление интерфейса
-};
-
 function renderDisproveFlow() {
   const g = state.game;
 

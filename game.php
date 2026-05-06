@@ -54,7 +54,7 @@ $taken = array_column($players, 'seat_no');
                 </div>
                 <div class="actions">
                     <button id="startBtn">Старт</button>
-                    <button id="rollBtn">Броситькубики</button>
+                    <button id="rollBtn">Бросить кубики</button>
                     <button id="suggestBtn">Предложение</button>
                     <button id="accuseBtn">Обвинение</button>
                     <button id="endBtn">Конец хода</button>
