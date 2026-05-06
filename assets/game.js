@@ -136,7 +136,7 @@ function render() {
 
   $('#turnLabel').textContent =
     g.status === 'waiting' ? 'Ожидание старта' : g.status === 'finished' ? 'Игра завершена' : 'Ход: ' + (current ? current.username + ' / ' + current.character_name : '-');
-  
+
   const phaseNames = {
     join: 'ожидание',
     roll: 'бросок кубиков',
@@ -170,16 +170,6 @@ function render() {
     stopAfkTimer();
   }
 
-  // Показываем кнопку для тайного прохода, если игрок в нужной комнате
-  const currentPlayer = state.players.find(p => +p.user_id === +CURRENT_USER_ID);
-  const currentRoom = state.rooms(+currentPlayer.pos_x, +currentPlayer.pos_y, g.id);
-  const secretRoom = state.rooms[currentRoom]?.secret;
-
-  if (secretRoom) {
-    $('#secretPassageBtn').style.display = 'inline-flex';
-  } else {
-    $('#secretPassageBtn').style.display = 'none';
-  }
 
   $('#startBtn').style.display = g.status === 'waiting' ? 'inline-flex' : 'none';
   ['rollBtn', 'suggestBtn', 'accuseBtn', 'endBtn'].forEach(id => {

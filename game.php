@@ -59,7 +59,7 @@ $taken = array_column($players, 'seat_no');
                     <button id="accuseBtn">Обвинение</button>
                     <button id="endBtn">Конец хода</button>
                     <button id="secretPassageBtn" style="display: none;">Использовать тайный проход</button>
-                    <buttonid="surrenderBtn" class="danger-btn">Сдаться</button>
+                    <button id="surrenderBtn" class="danger-btn">Сдаться</button>
                 </div>
             </div>
             <div class="dice" id="dice"><span>?</span><span>?</span></div>
