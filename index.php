@@ -48,10 +48,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <h1>🕵️ Mystery Mansion Online</h1>
     <p>Мультиплеерная детективная игра по механикам Cluedo</p><?php if ($error): ?>
       <div class="alert"><?= h($error) ?></div><?php endif; ?>
-    <form method="post"><input name="username" placeholder="Логин" maxlength="40" required><input name="password"
-        type="password" placeholder="Пароль" required>
-      <div class="row"><button name="mode" value="login">Войти</button><button name="mode" value="register"
-          class="secondary">Регистрация</button></div>
+    <form method="post">
+      <input name="username" placeholder="Логин" maxlength="40" required>
+      <input name="password"type="password" placeholder="Пароль" required>
+      <div class="row">
+        <button name="mode" value="login">Войти</button>
+        <button name="mode" value="register"class="secondary">Регистрация</button>
+        </div>
     </form>
   </main>
 </body>

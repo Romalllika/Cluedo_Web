@@ -1,10 +1,12 @@
 <?php
 session_start();
 
-include '../.env';
+// include '../.env';
 
-$dbHost = $_ENV['DB_HOST'];
-$dbName = $_ENV['DB_NAME'];
+$dbName = 'cluedo_web';
+$dbHost = 'localhost';
+// $dbHost = $_ENV['DB_HOST'];
+// $dbName = $_ENV['DB_NAME'];
 // $dbUser = $_ENV['DB_USER'];
 // $dbPass = $_ENV['DB_PASS'];
 
