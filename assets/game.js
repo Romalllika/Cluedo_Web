@@ -172,8 +172,14 @@ function render() {
 
 
   $('#startBtn').style.display = g.status === 'waiting' ? 'inline-flex' : 'none';
-  ['rollBtn', 'suggestBtn', 'accuseBtn', 'endBtn'].forEach(id => {
-    $('#' + id).style.display =
+  ['rollBtn', 'secretPassageBtn', 'suggestBtn', 'accuseBtn', 'endBtn'].forEach(id => {
+    const btn = $('#' + id);
+
+    if (!btn) {
+      return;
+    }
+
+    btn.style.display =
       (+g.current_turn_player_id === +CURRENT_USER_ID && g.status === 'active')
         ? 'inline-flex'
         : 'none';
@@ -185,6 +191,28 @@ function render() {
   }
 
   $('#rollBtn').disabled = g.phase !== 'roll';
+
+  const secretPassageBtn = $('#secretPassageBtn');
+
+  if (secretPassageBtn) {
+    const me = state.players.find(p => +p.user_id === +CURRENT_USER_ID);
+    const currentRoom = me ? roomAt(+me.pos_x, +me.pos_y) : null;
+    const hasSecretPassage =
+      currentRoom &&
+      state.board.rooms[currentRoom] &&
+      state.board.rooms[currentRoom].secret;
+
+    secretPassageBtn.disabled = !(
+      g.phase === 'roll' &&
+      +g.current_turn_player_id === +CURRENT_USER_ID &&
+      hasSecretPassage
+    );
+
+    secretPassageBtn.title = hasSecretPassage
+      ? `Перейти: ${currentRoom} → ${state.board.rooms[currentRoom].secret}`
+      : 'Секретный проход доступен только из угловой комнаты';
+  }
+
   $('#suggestBtn').disabled = g.phase !== 'suggest';
   $('#accuseBtn').disabled = !['accuse', 'suggest', 'move'].includes(g.phase);
   $('#endBtn').disabled = g.phase === 'disprove';
@@ -786,6 +814,26 @@ function renderShownHistory() {
 }
 $('#startBtn').onclick = async () => { const r = await api('start'); if (r.error) showErrorNotification(r.error); refresh(); };
 $('#rollBtn').onclick = async () => { const dice = $('#dice'); dice.classList.add('shake'); const r = await api('roll'); setTimeout(() => dice.classList.remove('shake'), 700); if (r.error) return showErrorNotification(r.error); dice.innerHTML = `<span>${r.d1}</span><span>${r.d2}</span>`; refresh(); };
+const secretPassageBtn = $('#secretPassageBtn');
+
+if (secretPassageBtn) {
+  secretPassageBtn.onclick = async () => {
+    const r = await api('secretPassage');
+
+    if (r.error) {
+      showErrorNotification(r.error);
+      return;
+    }
+
+    const dice = $('#dice');
+
+    if (dice) {
+      dice.innerHTML = '<span>↘</span><span>↖</span>';
+    }
+
+    refresh();
+  };
+}
 $('#endBtn').onclick = async () => { const r = await api('endTurn'); if (r.error) showErrorNotification(r.error); refresh(); };
 const surrenderBtn = $('#surrenderBtn');
 

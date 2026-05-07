@@ -822,6 +822,74 @@ if ($a === 'roll') {
     json_out(['ok' => 1, 'd1' => $d1, 'd2' => $d2]);
 }
 
+if ($a === 'secretPassage') {
+    $g = game($gid);
+
+    if (!is_turn($g, $uid) || $g['phase'] !== 'roll') {
+        json_out(['error' => 'Секретный проход можно использовать только в начале своего хода']);
+    }
+
+    $p = db()->prepare(
+        'SELECT *
+         FROM game_players
+         WHERE game_id=? AND user_id=?'
+    );
+    $p->execute([$gid, $uid]);
+    $p = $p->fetch();
+
+    if (!$p) {
+        json_out(['error' => 'Вы не состоите в этой игре']);
+    }
+
+    $currentRoom = room_at((int) $p['pos_x'], (int) $p['pos_y'], $gid);
+
+    if (!$currentRoom) {
+        json_out(['error' => 'Секретный проход доступен только из комнаты']);
+    }
+
+    $rooms = mansion_rooms($gid);
+    $targetRoom = $rooms[$currentRoom]['secret'] ?? null;
+
+    if (!$targetRoom || !isset($rooms[$targetRoom])) {
+        json_out(['error' => 'В этой комнате нет секретного прохода']);
+    }
+
+    $centers = room_positions($gid);
+    [$x, $y] = $centers[$targetRoom];
+
+    db()->prepare(
+        'UPDATE game_players
+         SET pos_x=?, pos_y=?
+         WHERE game_id=? AND user_id=?'
+    )->execute([$x, $y, $gid, $uid]);
+
+    set_character_position($gid, $p['character_name'], $x, $y);
+
+    db()->prepare(
+        "UPDATE games
+         SET dice_total=0,
+             phase='suggest',
+             phase_started_at=NOW()
+         WHERE id=?"
+    )->execute([$gid]);
+
+    reset_player_afk($gid, $uid);
+
+    log_msg(
+        $gid,
+        $uid,
+        'Игрок использовал секретный проход: «' . $currentRoom . '» → «' . $targetRoom . '».'
+    );
+
+    json_out([
+        'ok' => 1,
+        'from' => $currentRoom,
+        'to' => $targetRoom,
+        'x' => $x,
+        'y' => $y
+    ]);
+}
+
 if ($a === 'move') {
     $g = game($gid);
 
@@ -850,7 +918,7 @@ if ($a === 'move') {
     if ($dist > (int) $g['dice_total']) {
         json_out(['error' => 'Не хватает очков кубика. Нужно: ' . $dist . ', выпало: ' . $g['dice_total']]);
     }
-
+    $room = room_at($x, $y, $gid);
     // Обычное перемещение
     db()->prepare(
         'UPDATE game_players
