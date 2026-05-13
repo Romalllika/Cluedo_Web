@@ -13,15 +13,16 @@ if ($title === '') {
 }
 
 $max = max(3, min(6, (int) ($_POST['max'] ?? 6)));
+$mapId = normalize_map_id($_POST['map_id'] ?? 'classic_mansion');
 
 $db = db();
 $db->beginTransaction();
 
 try {
     $st = $db->prepare(
-        'INSERT INTO games(title, owner_id, max_players) VALUES(?,?,?)'
+        'INSERT INTO games(title, owner_id, max_players, map_id) VALUES(?,?,?,?)'
     );
-    $st->execute([$title, $uid, $max]);
+    $st->execute([$title, $uid, $max, $mapId]);
 
     $gid = (int) $db->lastInsertId();
 

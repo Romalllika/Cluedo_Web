@@ -1,0 +1,93 @@
+{
+  "id": "mansion_evening",
+  "title": "Особняк: вечерняя схема",
+  "description": "Альтернативная схема особняка с другими входами в часть комнат.",
+  "variant": 2,
+  "board": {
+    "w": 17,
+    "h": 17
+  },
+  "rooms": {
+    "Кухня": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 4,
+      "y2": 4,
+      "door": [4, 4],
+      "secret": "Кабинет",
+      "theme": "kitchen_evening"
+    },
+    "Бальный зал": {
+      "x1": 5,
+      "y1": 0,
+      "x2": 11,
+      "y2": 3,
+      "door": [10, 3],
+      "secret": null,
+      "theme": "ballroom_evening"
+    },
+    "Оранжерея": {
+      "x1": 12,
+      "y1": 0,
+      "x2": 16,
+      "y2": 4,
+      "door": [12, 4],
+      "secret": "Гостиная",
+      "theme": "greenhouse_evening"
+    },
+    "Столовая": {
+      "x1": 0,
+      "y1": 5,
+      "x2": 4,
+      "y2": 9,
+      "door": [4, 8],
+      "secret": null,
+      "theme": "dining_evening"
+    },
+    "Бильярдная": {
+      "x1": 12,
+      "y1": 5,
+      "x2": 16,
+      "y2": 9,
+      "door": [12, 6],
+      "secret": null,
+      "theme": "billiard_evening"
+    },
+    "Библиотека": {
+      "x1": 0,
+      "y1": 10,
+      "x2": 4,
+      "y2": 12,
+      "door": [4, 12],
+      "secret": null,
+      "theme": "library_evening"
+    },
+    "Гостиная": {
+      "x1": 0,
+      "y1": 13,
+      "x2": 4,
+      "y2": 16,
+      "door": [4, 13],
+      "secret": "Оранжерея",
+      "theme": "lounge_evening"
+    },
+    "Холл": {
+      "x1": 5,
+      "y1": 14,
+      "x2": 11,
+      "y2": 16,
+      "door": [6, 14],
+      "secret": null,
+      "theme": "hall_evening"
+    },
+    "Кабинет": {
+      "x1": 12,
+      "y1": 10,
+      "x2": 16,
+      "y2": 16,
+      "door": [12, 10],
+      "secret": "Кухня",
+      "theme": "study_evening"
+    }
+  }
+}

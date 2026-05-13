@@ -1,8 +1,8 @@
 <?php
 
 require 'includes/config.php';
+require 'includes/data.php';
 require_auth();
-
 /**
  * Удаляем только реально пустые ожидающие лобби.
  * После правки create_game.php новое лобби уже не будет пустым,
@@ -30,6 +30,16 @@ $games = db()->query(
         CASE WHEN g.status = 'waiting' THEN 0 ELSE 1 END,
         g.created_at DESC"
 )->fetchAll();
+
+$maps = available_maps();
+
+foreach ($games as &$game) {
+    $mapId = normalize_map_id($game['map_id'] ?? 'classic_mansion');
+    $game['map_id'] = $mapId;
+    $game['map_title'] = $maps[$mapId]['title'] ?? $mapId;
+}
+
+unset($game);
 
 header('Content-Type: application/json; charset=utf-8');
 

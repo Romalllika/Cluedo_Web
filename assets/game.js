@@ -150,7 +150,7 @@ function render() {
   let phaseText =
     'Фаза: ' + (phaseNames[g.phase] || g.phase) +
     ' · кубики: ' + (g.dice_total || 0) +
-    ' · вариант поля: ' + (state.board.variant + 1);
+    ' · карта: ' + (state.board.mapTitle || ('Вариант ' + (state.board.variant + 1)));
 
   $('#phaseLabel').textContent = phaseText;
 

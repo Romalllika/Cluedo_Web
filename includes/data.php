@@ -51,174 +51,156 @@ function characters(): array
     ];
 }
 
+function available_maps(): array
+{
+    return [
+
+        'classic_mansion' => [
+
+            'id' => 'classic_mansion',
+
+            'title' => 'Классический особняк',
+
+            'description' => 'Стабильная рабочая карта особняка.'
+
+        ],
+
+        'mansion_shifted_doors' => [
+
+            'id' => 'mansion_shifted_doors',
+
+            'title' => 'Особняк: другие двери',
+
+            'description' => 'Та же карта особняка, но с немного изменёнными дверями комнат.'
+
+        ],
+        'mansion_evening' => [
+
+            'id' => 'mansion_evening',
+
+            'title' => 'Особняк: вечерняя схема',
+
+            'description' => 'Альтернативная схема особняка с другими входами в часть комнат.'
+
+        ],
+
+    ];
+}
+
+function normalize_map_id(?string $mapId): string
+{
+    $mapId = trim((string) $mapId);
+    $maps = available_maps();
+
+    return isset($maps[$mapId]) ? $mapId : 'classic_mansion';
+}
+
+function map_id_for_game(int $gid = 0): string
+{
+    if ($gid <= 0) {
+        return 'classic_mansion';
+    }
+
+    static $cache = [];
+
+    if (isset($cache[$gid])) {
+        return $cache[$gid];
+    }
+
+    try {
+        $s = db()->prepare('SELECT map_id FROM games WHERE id=?');
+        $s->execute([$gid]);
+
+        $cache[$gid] = normalize_map_id($s->fetchColumn() ?: 'classic_mansion');
+    } catch (Throwable $e) {
+        /**
+         * Защита на случай, если код уже обновили,
+         * а ALTER TABLE games ADD map_id ещё не выполнен.
+         */
+        $cache[$gid] = 'classic_mansion';
+    }
+
+    return $cache[$gid];
+}
+
+function load_map_config(int $gid = 0): array
+{
+    $mapId = map_id_for_game($gid);
+
+    static $cache = [];
+
+    if (isset($cache[$mapId])) {
+        return $cache[$mapId];
+    }
+
+    $path = __DIR__ . '/../maps/' . $mapId . '.json';
+
+    if (!is_file($path)) {
+        $path = __DIR__ . '/../maps/classic_mansion.json';
+    }
+
+    $json = file_get_contents($path);
+    $data = json_decode($json, true);
+
+    if (!is_array($data)) {
+        throw new RuntimeException('Не удалось прочитать карту: ' . $mapId);
+    }
+
+    $cache[$mapId] = $data;
+
+    return $cache[$mapId];
+}
+
 function board_variant(int $gid = 0): int
 {
-    return $gid > 0 ? $gid % 3 : 0;
+    $map = load_map_config($gid);
+
+    return (int) ($map['variant'] ?? 0);
 }
 
 function board_size(int $gid = 0): array
 {
-    return ['w' => 17, 'h' => 17];
+    $map = load_map_config($gid);
+    $board = $map['board'] ?? [];
+
+    return [
+        'w' => (int) ($board['w'] ?? 17),
+        'h' => (int) ($board['h'] ?? 17)
+    ];
 }
 
 /**
  * Комнаты стоят плотнее и занимают почти весь периметр поля.
  * Дверь находится НА КРАЮ комнаты.
  */
+/**
+ * Комнаты, двери, секретные проходы и визуальные темы текущей карты.
+ */
 function mansion_rooms(int $gid = 0): array
 {
-    $v = board_variant($gid);
+    $map = load_map_config($gid);
+    $rooms = $map['rooms'] ?? [];
 
-    $r = [
-        'Кухня' => [
-            'x1' => 0,
-            'y1' => 0,
-            'x2' => 4,
-            'y2' => 4,
-            'door' => [4, 4],
-            'secret' => 'Кабинет',
-            'theme' => 'kitchen'
-        ],
+    $out = [];
 
-        'Бальный зал' => [
-            'x1' => 5,
-            'y1' => 0,
-            'x2' => 11,
-            'y2' => 3,
-            'door' => [8, 3],
-            'secret' => null,
-            'theme' => 'ballroom'
-        ],
+    foreach ($rooms as $name => $room) {
+        $door = $room['door'] ?? [0, 0];
 
-        'Оранжерея' => [
-            'x1' => 12,
-            'y1' => 0,
-            'x2' => 16,
-            'y2' => 4,
-            'door' => [12, 4],
-            'secret' => 'Гостиная',
-            'theme' => 'greenhouse'
-        ],
+        $out[$name] = [
+            'x1' => (int) $room['x1'],
+            'y1' => (int) $room['y1'],
+            'x2' => (int) $room['x2'],
+            'y2' => (int) $room['y2'],
+            'door' => [(int) $door[0], (int) $door[1]],
+            'secret' => $room['secret'] ?? null,
+            'theme' => $room['theme'] ?? 'default',
+        ];
 
-        'Столовая' => [
-            'x1' => 0,
-            'y1' => 5,
-            'x2' => 4,
-            'y2' => 9,
-            'door' => [4, 7],
-            'secret' => null,
-            'theme' => 'dining'
-        ],
-
-        'Бильярдная' => [
-            'x1' => 12,
-            'y1' => 5,
-            'x2' => 16,
-            'y2' => 9,
-            'door' => [12, 7],
-            'secret' => null,
-            'theme' => 'billiard'
-        ],
-
-        'Библиотека' => [
-            'x1' => 0,
-            'y1' => 10,
-            'x2' => 4,
-            'y2' => 12,
-            'door' => [4, 11],
-            'secret' => null,
-            'theme' => 'library'
-        ],
-
-        'Гостиная' => [
-            'x1' => 0,
-            'y1' => 13,
-            'x2' => 4,
-            'y2' => 16,
-            'door' => [4, 13],
-            'secret' => 'Оранжерея',
-            'theme' => 'lounge'
-        ],
-
-        'Холл' => [
-            'x1' => 5,
-            'y1' => 14,
-            'x2' => 11,
-            'y2' => 16,
-            'door' => [8, 14],
-            'secret' => null,
-            'theme' => 'hall'
-        ],
-
-        'Кабинет' => [
-            'x1' => 12,
-            'y1' => 10,
-            'x2' => 16,
-            'y2' => 16,
-            'door' => [12, 12],
-            'secret' => 'Кухня',
-            'theme' => 'study'
-        ],
-    ];
-
-    /**
-     * Вариант 1 — немного другие двери.
-     * Комнаты остаются на тех же местах, чтобы поле не ломалось.
-     */
-    if ($v === 1) {
-
-        $r['Кухня']['door'] = [4, 4];
-
-        $r['Бальный зал']['door'] = [8, 3];
-
-        $r['Оранжерея']['door'] = [12, 4];
-
-        $r['Столовая']['door'] = [4, 7];
-
-        $r['Бильярдная']['door'] = [12, 7];
-
-        $r['Библиотека']['door'] = [4, 11];
-
-        $r['Гостиная']['door'] = [4, 13];
-
-        $r['Холл']['door'] = [8, 14];
-
-        $r['Кабинет']['door'] = [12, 12];
-
+        $out[$name]['doors'] = [$out[$name]['door']];
     }
 
-    /**
-     * Вариант 2 — ещё одно смещение дверей.
-     */
-    if ($v === 2) {
-
-        $r['Кухня']['door'] = [4, 4];
-
-        $r['Бальный зал']['door'] = [8, 3];
-
-        $r['Оранжерея']['door'] = [12, 4];
-
-        $r['Столовая']['door'] = [4, 7];
-
-        $r['Бильярдная']['door'] = [12, 7];
-
-        $r['Библиотека']['door'] = [4, 11];
-
-        $r['Гостиная']['door'] = [4, 13];
-
-        $r['Холл']['door'] = [8, 14];
-
-        $r['Кабинет']['door'] = [12, 12];
-
-    }
-
-    foreach ($r as $name => $room) {
-        $r[$name]['doors'] = [$room['door']];
-    }
-
-    return $r;
+    return $out;
 }
-
 /**
  * Только эти клетки являются коридорами.
  * Всё остальное, что не комната, считается стеной/пустотой и недоступно.
@@ -505,11 +487,14 @@ function reachable_targets(
 function board_cells(int $gid = 0): array
 {
     $s = board_size($gid);
+    $map = load_map_config($gid);
 
     return [
         'width' => $s['w'],
         'height' => $s['h'],
         'variant' => board_variant($gid),
+        'mapId' => map_id_for_game($gid),
+        'mapTitle' => $map['title'] ?? 'Карта',
         'rooms' => mansion_rooms($gid),
         'paths' => board_paths($gid),
         'starts' => characters()

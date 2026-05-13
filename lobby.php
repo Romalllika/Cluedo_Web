@@ -7,6 +7,7 @@ $uid = current_user_id();
 $u = db()->prepare('SELECT *, ROUND(IF(games_played=0,0,wins/games_played*100),1) AS wr FROM users WHERE id=?');
 $u->execute([$uid]);
 $me = $u->fetch();
+$maps = available_maps();
 $games = db()->query("SELECT g.*, u.username owner, COUNT(gp.id) players FROM games g JOIN users u ON u.id=g.owner_id LEFT JOIN game_players gp ON gp.game_id=g.id WHERE g.status<>'finished' GROUP BY g.id ORDER BY g.created_at DESC")->fetchAll();
 $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_played=0,0,wins/games_played*100),1) wr FROM users ORDER BY wr DESC,wins DESC LIMIT 10")->fetchAll();
 ?>
@@ -34,13 +35,26 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
         <section class="grid2">
             <div class="panel">
                 <h2>Создать игру</h2>
-                <form action="create_game.php" method="post" class="create"><input name="title"
-                        placeholder="Название матча" value="Матч <?= date('H:i') ?>"><select name="max">
+                <form action="create_game.php" method="post" class="create">
+                    <input name="title" placeholder="Название матча" value="Матч <?= date('H:i') ?>">
+
+                    <select name="max">
                         <option>3</option>
                         <option>4</option>
                         <option>5</option>
                         <option selected>6</option>
-                    </select><button>Создать</button></form>
+                    </select>
+
+                    <select name="map_id">
+                        <?php foreach (available_maps() as $map): ?>
+                            <option value="<?= h($map['id']) ?>">
+                                <?= h($map['title']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <button>Создать</button>
+                </form>
             </div>
             <div class="panel">
                 <h2>Топ игроков</h2>
@@ -108,22 +122,31 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
 
                     return `
                     <article class="game-card">
-                        <div>
-                            <h3>${escapeHtml(g.title || ('Игра #' + g.id))}</h3>
-                            <p>
-                                Создатель: <b>${escapeHtml(g.owner_name || 'Игрок')}</b>
-                            </p>
-                            <p>
-                                Игроков: <b>${g.players_count}</b> / ${g.max_players}
-                            </p>
-                            <p>
-                                Статус: <b>${isWaiting ? 'ожидает игроков' : 'идёт игра'}</b>
-                            </p>
-                        </div>
 
-                        <a class="btn" href="game.php?id=${g.id}">
-                            ${isWaiting ? 'Зайти в лобби' : 'Смотреть / продолжить'}
-                        </a>
+                        <h3><?= h($g['title']) ?></h3>
+
+                        <p>Создатель: <?= h($g['owner']) ?></p>
+
+                        <?php
+
+                        $mapId = normalize_map_id($g['map_id'] ?? 'classic_mansion');
+
+                        $mapTitle = $maps[$mapId]['title'] ?? $mapId;
+
+                        ?>
+
+                        <p>Карта: <b><?= h($mapTitle) ?></b></p>
+
+                        <p class="badge <?= h($g['status']) ?>">
+
+                            <?= $g['status'] === 'waiting' ? 'Ожидает игроков' : 'Идёт игра' ?> ·
+
+                            <?= (int) $g['players'] ?>/<?= (int) $g['max_players'] ?>
+
+                        </p>
+
+                        <a class="btn" href="game.php?id=<?= (int) $g['id'] ?>">Открыть</a>
+
                     </article>
                 `;
                 }).join('');

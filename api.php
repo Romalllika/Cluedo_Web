@@ -695,6 +695,7 @@ if ($a === 'state') {
         'suspects' => suspects(),
         'weapons' => weapons(),
         'roomNames' => rooms(),
+        'availableMaps' => available_maps(),
         'characters' => characters()
     ]);
 }
