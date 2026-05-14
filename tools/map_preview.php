@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/data.php';
+require_once __DIR__ . '/validate_maps.php';
 
 function e(string $value): string
 {
@@ -82,7 +83,7 @@ function preview_path_keys(array $map): array
      */
     $keys = [];
 
-    foreach (board_paths(0) as $point) {
+    foreach (default_board_paths() as $point) {
         $keys[preview_cell_key((int) $point[0], (int) $point[1])] = true;
     }
 
@@ -109,6 +110,36 @@ function preview_starts(): array
 $maps = available_maps();
 $selectedMapId = normalize_map_id($_GET['map'] ?? 'classic_mansion');
 $map = preview_load_map($selectedMapId);
+
+$mapFile = __DIR__ . '/../maps/' . $selectedMapId . '.json';
+
+$requiredRoomsForPreview = [
+    'Кухня',
+    'Бальный зал',
+    'Оранжерея',
+    'Столовая',
+    'Бильярдная',
+    'Библиотека',
+    'Гостиная',
+    'Холл',
+    'Кабинет',
+];
+
+$characterStartsForPreview = [];
+
+foreach (characters() as $character) {
+    $characterStartsForPreview[] = [
+        (int) $character['x'],
+        (int) $character['y']
+    ];
+}
+
+$validationResult = validate_map_file(
+    $mapFile,
+    __DIR__ . '/../maps',
+    $requiredRoomsForPreview,
+    $characterStartsForPreview
+);
 
 $board = $map['board'] ?? [];
 $width = (int) ($board['w'] ?? 17);
@@ -345,14 +376,36 @@ foreach ($rooms as $roomName => $room) {
             margin-bottom: 22px;
         }
 
-        .room-item,
-        .secret-item,
-        .legend-item {
-            padding: 10px 12px;
-            border-radius: 14px;
-            background: rgba(255, 255, 255, .07);
-            border: 1px solid rgba(255, 255, 255, .1);
-            font-size: 14px;
+        .room-list,
+        .secret-list,
+        .legend {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 22px;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 360px;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .details-panel {
+            padding: 18px;
+        }
+
+        .details-panel h2 {
+            margin: 0 0 12px;
+        }
+
+        .room-list.compact {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            margin-bottom: 0;
+        }
+
+        .secret-list.compact {
+            margin-bottom: 0;
         }
 
         .muted {
@@ -365,6 +418,46 @@ foreach ($rooms as $roomName => $room) {
 
         .ok {
             color: #70e38c;
+        }
+
+        .err {
+            color: #ff7b7b;
+        }
+
+        .validation-box {
+            margin-bottom: 22px;
+            padding: 14px;
+            border-radius: 16px;
+            background: rgba(0, 0, 0, .18);
+            border: 1px solid rgba(255, 255, 255, .12);
+        }
+
+        .validation-box.ok-box {
+            border-color: rgba(112, 227, 140, .45);
+        }
+
+        .validation-box.error-box {
+            border-color: rgba(255, 123, 123, .55);
+        }
+
+        .validation-box ul {
+            margin: 8px 0 0;
+            padding-left: 18px;
+        }
+
+        .validation-stats {
+            display: grid;
+            gap: 6px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .validation-stats div {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, .08);
         }
 
         .actions {
@@ -387,13 +480,30 @@ foreach ($rooms as $roomName => $room) {
 
         @media (max-width: 1000px) {
             .top,
-            .layout {
+            .layout,
+            .details-grid {
                 grid-template-columns: 1fr;
                 display: grid;
             }
 
+            .room-list.compact {
+                grid-template-columns: 1fr;
+            }
+
             .select-box {
                 min-width: 0;
+            }
+        }
+
+        @media (max-width: 1250px) {
+            .room-list.compact {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 760px) {
+            .room-list.compact {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -488,6 +598,70 @@ foreach ($rooms as $roomName => $room) {
 
             <aside class="panel side">
                 <h2><?= e((string) ($map['title'] ?? $selectedMapId)) ?></h2>
+                
+                <?php
+                $validationErrors = $validationResult['errors'] ?? [];
+                $validationWarnings = $validationResult['warnings'] ?? [];
+                $validationStats = $validationResult['stats'] ?? [];
+                $validationOk = !$validationErrors;
+                ?>
+
+                <div class="validation-box <?= $validationOk ? 'ok-box' : 'error-box' ?>">
+                    <b class="<?= $validationOk ? 'ok' : 'err' ?>">
+                        <?= $validationOk ? 'Проверка карты: OK' : 'Проверка карты: ERROR' ?>
+                    </b>
+
+                    <?php if ($validationStats): ?>
+                        <div class="validation-stats">
+                            <div>
+                                <span class="muted">Поле</span>
+                                <b><?= e((string) ($validationStats['board'] ?? 'unknown')) ?></b>
+                            </div>
+                            <div>
+                                <span class="muted">Комнаты</span>
+                                <b><?= (int) ($validationStats['rooms'] ?? 0) ?></b>
+                            </div>
+                            <div>
+                                <span class="muted">Коридоры</span>
+                                <b><?= (int) ($validationStats['paths'] ?? 0) ?></b>
+                            </div>
+                            <div>
+                                <span class="muted">Двери</span>
+                                <b><?= (int) ($validationStats['doors'] ?? 0) ?></b>
+                            </div>
+                            <div>
+                                <span class="muted">Secret</span>
+                                <b><?= (int) ($validationStats['secrets'] ?? 0) ?></b>
+                            </div>
+                            <div>
+                                <span class="muted">Старты</span>
+                                <b><?= (int) ($validationStats['starts'] ?? 0) ?></b>
+                            </div>
+                            <div>
+                                <span class="muted">Paths в JSON</span>
+                                <b><?= !empty($validationStats['has_explicit_paths']) ? 'да' : 'нет' ?></b>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($validationErrors): ?>
+                        <h3 class="err">Ошибки</h3>
+                        <ul>
+                            <?php foreach ($validationErrors as $error): ?>
+                                <li class="err"><?= e((string) $error) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+
+                    <?php if ($validationWarnings): ?>
+                        <h3 class="warn">Предупреждения</h3>
+                        <ul>
+                            <?php foreach ($validationWarnings as $warning): ?>
+                                <li class="warn"><?= e((string) $warning) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+                </div>
 
                 <div class="meta">
                     <div>
@@ -512,8 +686,18 @@ foreach ($rooms as $roomName => $room) {
                     <div class="legend-item">Синеватая клетка — коридор/доступный путь</div>
                 </div>
 
+                
+                <div class="actions">
+                    <a class="btn" href="../lobby.php">← В лобби</a>
+                    <a class="btn" href="validate_maps.php">Проверить карты</a>
+                </div>
+            </aside>
+        </div>
+            <div class="details-grid">
+            <section class="panel details-panel">
                 <h2>Комнаты</h2>
-                <div class="room-list">
+
+                <div class="room-list compact">
                     <?php foreach ($rooms as $roomName => $room): ?>
                         <?php
                         $door = $room['door'] ?? ['?', '?'];
@@ -530,9 +714,12 @@ foreach ($rooms as $roomName => $room) {
                         </div>
                     <?php endforeach; ?>
                 </div>
+            </section>
 
+            <section class="panel details-panel">
                 <h2>Секретные проходы</h2>
-                <div class="secret-list">
+
+                <div class="secret-list compact">
                     <?php if (!$secretLines): ?>
                         <div class="secret-item muted">Нет секретных проходов</div>
                     <?php endif; ?>
@@ -545,12 +732,7 @@ foreach ($rooms as $roomName => $room) {
                         </div>
                     <?php endforeach; ?>
                 </div>
-
-                <div class="actions">
-                    <a class="btn" href="../lobby.php">← В лобби</a>
-                    <a class="btn" href="validate_maps.php">Проверить карты</a>
-                </div>
-            </aside>
+            </section>
         </div>
     </div>
 </body>

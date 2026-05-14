@@ -205,7 +205,11 @@ function mansion_rooms(int $gid = 0): array
  * Только эти клетки являются коридорами.
  * Всё остальное, что не комната, считается стеной/пустотой и недоступно.
  */
-function board_paths(int $gid = 0): array
+/**
+ * Старая стабильная дорожная сетка.
+ * Нужна как fallback для карт, где paths ещё не вынесены в JSON.
+ */
+function default_board_paths(): array
 {
     $paths = [];
 
@@ -215,8 +219,6 @@ function board_paths(int $gid = 0): array
 
     /**
      * Центральная зона.
-     * Это не комната, а внутренний двор/холл движения.
-     * Персонажи стартуют здесь.
      */
     for ($y = 4; $y <= 13; $y++) {
         for ($x = 5; $x <= 11; $x++) {
@@ -225,15 +227,48 @@ function board_paths(int $gid = 0): array
     }
 
     /**
-     * Соединение к Холлу снизу.
-     * Холл начинается с y=14, поэтому клетка y=13 перед ним остаётся коридором.
+     * Стартовые позиции.
      */
-    for ($x = 5; $x <= 11; $x++) {
-        $add($x, 13);
+    foreach (characters() as $c) {
+        $add((int) $c['x'], (int) $c['y']);
+    }
+
+    return array_values($paths);
+}
+
+/**
+ * Только эти клетки являются коридорами.
+ * Всё остальное, что не комната, считается стеной/пустотой и недоступно.
+ *
+ * Если в JSON карты есть paths — используем их.
+ * Если нет — используем старую стабильную сетку.
+ */
+function board_paths(int $gid = 0): array
+{
+    $map = load_map_config($gid);
+    $paths = [];
+
+    $add = function (int $x, int $y) use (&$paths) {
+        $paths["$x:$y"] = [$x, $y];
+    };
+
+    if (isset($map['paths']) && is_array($map['paths'])) {
+        foreach ($map['paths'] as $point) {
+            if (!is_array($point) || count($point) < 2) {
+                continue;
+            }
+
+            $add((int) $point[0], (int) $point[1]);
+        }
+    } else {
+        foreach (default_board_paths() as $point) {
+            $add((int) $point[0], (int) $point[1]);
+        }
     }
 
     /**
-     * Стартовые позиции.
+     * Стартовые позиции всегда считаем доступными.
+     * Это защита от карты, где автор забыл добавить стартовые клетки в paths.
      */
     foreach (characters() as $c) {
         $add((int) $c['x'], (int) $c['y']);

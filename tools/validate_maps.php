@@ -51,17 +51,13 @@ function default_path_keys(array $characterStarts): array
     $paths = [];
 
     /**
-     * Это должно соответствовать board_paths() из includes/data.php.
-     * Сейчас дорожная сетка у всех карт одна.
+     * Это старый fallback, соответствующий default_board_paths()
+     * из includes/data.php.
      */
     for ($y = 4; $y <= 13; $y++) {
         for ($x = 5; $x <= 11; $x++) {
             $paths[cell_key($x, $y)] = true;
         }
-    }
-
-    for ($x = 5; $x <= 11; $x++) {
-        $paths[cell_key($x, 13)] = true;
     }
 
     foreach ($characterStarts as [$x, $y]) {
@@ -71,6 +67,337 @@ function default_path_keys(array $characterStarts): array
     return $paths;
 }
 
+function parse_cell_key(string $key): array
+{
+    [$x, $y] = array_map('intval', explode(':', $key, 2));
+
+    return [$x, $y];
+}
+
+function neighbor_cells(int $x, int $y): array
+{
+    return [
+        [$x + 1, $y],
+        [$x - 1, $y],
+        [$x, $y + 1],
+        [$x, $y - 1],
+    ];
+}
+
+function map_path_keys(
+    array $map,
+    int $width,
+    int $height,
+    array $rooms,
+    array $characterStarts,
+    array &$errors
+): array {
+    if (!isset($map['paths'])) {
+        return default_path_keys($characterStarts);
+    }
+
+    if (!is_array($map['paths'])) {
+        add_error($errors, 'paths должен быть массивом координат');
+        return default_path_keys($characterStarts);
+    }
+
+    $paths = [];
+
+    foreach ($map['paths'] as $index => $point) {
+        if (!is_array($point) || count($point) < 2) {
+            add_error($errors, "paths[$index]: точка должна быть массивом [x,y]");
+            continue;
+        }
+
+        $x = (int) $point[0];
+        $y = (int) $point[1];
+
+        if ($x < 0 || $y < 0 || $x >= $width || $y >= $height) {
+            add_error($errors, "paths[$index]: точка [$x,$y] выходит за границы поля");
+            continue;
+        }
+
+        if (point_in_any_room($x, $y, $rooms)) {
+            add_error($errors, "paths[$index]: точка [$x,$y] находится внутри комнаты");
+            continue;
+        }
+
+        $paths[cell_key($x, $y)] = true;
+    }
+
+    foreach ($characterStarts as [$x, $y]) {
+        $x = (int) $x;
+        $y = (int) $y;
+
+        if ($x < 0 || $y < 0 || $x >= $width || $y >= $height) {
+            add_error($errors, "Стартовая позиция [$x,$y] выходит за границы поля");
+            continue;
+        }
+
+        if (point_in_any_room($x, $y, $rooms)) {
+            add_error($errors, "Стартовая позиция [$x,$y] находится внутри комнаты");
+            continue;
+        }
+
+        $paths[cell_key($x, $y)] = true;
+    }
+
+    if (!$paths) {
+        add_error($errors, 'paths не содержит ни одной валидной клетки');
+        return default_path_keys($characterStarts);
+    }
+
+    return $paths;
+}
+
+function reachable_path_keys(array $pathKeys, array $characterStarts): array
+{
+    if (!$pathKeys) {
+        return [];
+    }
+
+    $startKey = null;
+
+    foreach ($characterStarts as [$x, $y]) {
+        $key = cell_key((int) $x, (int) $y);
+
+        if (isset($pathKeys[$key])) {
+            $startKey = $key;
+            break;
+        }
+    }
+
+    if ($startKey === null) {
+        $startKey = array_key_first($pathKeys);
+    }
+
+    $queue = [$startKey];
+    $visited = [$startKey => true];
+
+    while ($queue) {
+        $current = array_shift($queue);
+        [$x, $y] = parse_cell_key($current);
+
+        foreach (neighbor_cells($x, $y) as [$nx, $ny]) {
+            $nextKey = cell_key($nx, $ny);
+
+            if (!isset($pathKeys[$nextKey]) || isset($visited[$nextKey])) {
+                continue;
+            }
+
+            $visited[$nextKey] = true;
+            $queue[] = $nextKey;
+        }
+    }
+
+    return $visited;
+}
+
+function door_entry_cells(array $room, array $pathKeys, array $rooms): array
+{
+    if (!isset($room['door']) || !is_array($room['door']) || count($room['door']) < 2) {
+        return [];
+    }
+
+    $dx = (int) $room['door'][0];
+    $dy = (int) $room['door'][1];
+
+    $entries = [];
+
+    foreach (neighbor_cells($dx, $dy) as [$nx, $ny]) {
+        $key = cell_key($nx, $ny);
+
+        if (
+            isset($pathKeys[$key]) &&
+            !point_in_any_room($nx, $ny, $rooms)
+        ) {
+            $entries[$key] = [$nx, $ny];
+        }
+    }
+
+    return $entries;
+}
+
+function validate_path_connectivity(
+    array $rooms,
+    array $pathKeys,
+    array $characterStarts,
+    array &$errors,
+    array &$warnings
+): void {
+    if (!$pathKeys) {
+        add_error($errors, 'Нет валидных клеток paths для проверки связности');
+        return;
+    }
+
+    $reachable = reachable_path_keys($pathKeys, $characterStarts);
+
+    if (!$reachable) {
+        add_error($errors, 'Не удалось построить достижимую сеть paths от стартовой зоны');
+        return;
+    }
+
+    $isolated = array_diff_key($pathKeys, $reachable);
+
+    if ($isolated) {
+        $examples = array_slice(array_keys($isolated), 0, 10);
+
+        add_error(
+            $errors,
+            'Найдены изолированные клетки paths, недостижимые от стартовой зоны: ' .
+            implode(', ', $examples) .
+            (count($isolated) > 10 ? ' ...' : '')
+        );
+    }
+
+    foreach ($rooms as $roomName => $room) {
+        if (!is_array($room)) {
+            continue;
+        }
+
+        $entries = door_entry_cells($room, $pathKeys, $rooms);
+
+        if (!$entries) {
+            continue;
+        }
+
+        $hasReachableEntry = false;
+
+        foreach ($entries as $key => $point) {
+            if (isset($reachable[$key])) {
+                $hasReachableEntry = true;
+                break;
+            }
+        }
+
+        if (!$hasReachableEntry) {
+            $door = $room['door'];
+            add_error(
+                $errors,
+                "Комната `$roomName`: дверь [" . (int) $door[0] . "," . (int) $door[1] . "] имеет соседний path, но он недостижим от стартовой зоны"
+            );
+        }
+    }
+
+    foreach ($characterStarts as [$x, $y]) {
+        $key = cell_key((int) $x, (int) $y);
+
+        if (isset($pathKeys[$key]) && !isset($reachable[$key])) {
+            $warnings[] = "Стартовая позиция [$x,$y] находится вне основной сети paths";
+        }
+    }
+}
+function explicit_json_path_keys(array $map): array
+{
+    $keys = [];
+
+    if (!isset($map['paths']) || !is_array($map['paths'])) {
+        return $keys;
+    }
+
+    foreach ($map['paths'] as $point) {
+        if (!is_array($point) || count($point) < 2) {
+            continue;
+        }
+
+        $keys[cell_key((int) $point[0], (int) $point[1])] = true;
+    }
+
+    return $keys;
+}
+
+function validate_character_starts(
+    array $map,
+    int $width,
+    int $height,
+    array $rooms,
+    array $pathKeys,
+    array $reachable,
+    array $characterStarts,
+    array &$errors,
+    array &$warnings
+): void {
+    if (!$characterStarts) {
+        add_error($errors, 'Не заданы стартовые позиции персонажей');
+        return;
+    }
+
+    $seen = [];
+    $explicitPaths = explicit_json_path_keys($map);
+    $hasExplicitPaths = isset($map['paths']) && is_array($map['paths']);
+
+    foreach ($characterStarts as $index => [$x, $y]) {
+        $x = (int) $x;
+        $y = (int) $y;
+        $key = cell_key($x, $y);
+        $label = 'Стартовая позиция #' . ($index + 1) . " [$x,$y]";
+
+        if (isset($seen[$key])) {
+            add_error($errors, "$label дублирует другую стартовую позицию");
+        }
+
+        $seen[$key] = true;
+
+        if ($x < 0 || $y < 0 || $x >= $width || $y >= $height) {
+            add_error($errors, "$label выходит за границы поля");
+            continue;
+        }
+
+        if (point_in_any_room($x, $y, $rooms)) {
+            add_error($errors, "$label находится внутри комнаты");
+            continue;
+        }
+
+        if (!isset($pathKeys[$key])) {
+            add_error($errors, "$label не находится в paths");
+            continue;
+        }
+
+        if (!isset($reachable[$key])) {
+            add_error($errors, "$label недостижима из основной сети paths");
+        }
+
+        if ($hasExplicitPaths && !isset($explicitPaths[$key])) {
+            $warnings[] = "$label не указана явно в JSON paths. Сейчас она добавляется автоматически, но для самодостаточной карты лучше добавить её в paths.";
+        }
+    }
+}
+
+function map_statistics(
+    array $map,
+    int $width,
+    int $height,
+    array $rooms,
+    array $pathKeys,
+    array $characterStarts
+): array {
+    $doors = 0;
+    $secrets = 0;
+
+    foreach ($rooms as $room) {
+        if (!is_array($room)) {
+            continue;
+        }
+
+        if (isset($room['door']) && is_array($room['door']) && count($room['door']) >= 2) {
+            $doors++;
+        }
+
+        if (!empty($room['secret'])) {
+            $secrets++;
+        }
+    }
+
+    return [
+        'board' => $width . 'x' . $height,
+        'rooms' => count($rooms),
+        'paths' => count($pathKeys),
+        'doors' => $doors,
+        'secrets' => $secrets,
+        'starts' => count($characterStarts),
+        'has_explicit_paths' => isset($map['paths']) && is_array($map['paths']),
+    ];
+}
 function point_in_room(int $x, int $y, array $room): bool
 {
     return
@@ -254,8 +581,7 @@ function validate_map_file(
         }
     }
 
-    $pathKeys = default_path_keys($characterStarts);
-
+    $pathKeys = map_path_keys($data, $w, $h, $rooms, $characterStarts, $errors);
     foreach ($rooms as $roomName => $room) {
         if (
             !is_array($room) ||
@@ -269,29 +595,42 @@ function validate_map_file(
         $dx = (int) $room['door'][0];
         $dy = (int) $room['door'][1];
 
-        $neighbors = [
-            [$dx + 1, $dy],
-            [$dx - 1, $dy],
-            [$dx, $dy + 1],
-            [$dx, $dy - 1],
-        ];
+        $entries = door_entry_cells($room, $pathKeys, $rooms);
 
-        $hasEntry = false;
-
-        foreach ($neighbors as [$nx, $ny]) {
-            if (
-                isset($pathKeys[cell_key($nx, $ny)]) &&
-                !point_in_any_room($nx, $ny, $rooms)
-            ) {
-                $hasEntry = true;
-                break;
-            }
-        }
-
-        if (!$hasEntry) {
+        if (!$entries) {
             add_error($errors, "Комната `$roomName`: у двери [$dx,$dy] нет соседней клетки коридора");
         }
     }
+
+    validate_path_connectivity(
+        $rooms,
+        $pathKeys,
+        $characterStarts,
+        $errors,
+        $warnings
+    );
+    $reachable = reachable_path_keys($pathKeys, $characterStarts);
+
+    validate_character_starts(
+        $data,
+        $w,
+        $h,
+        $rooms,
+        $pathKeys,
+        $reachable,
+        $characterStarts,
+        $errors,
+        $warnings
+    );
+
+    $stats = map_statistics(
+        $data,
+        $w,
+        $h,
+        $rooms,
+        $pathKeys,
+        $characterStarts
+    );
 
     foreach ($rooms as $roomName => $room) {
         if (!is_array($room)) {
@@ -320,7 +659,20 @@ function validate_map_file(
         'title' => $title,
         'errors' => $errors,
         'warnings' => $warnings,
+        'stats' => $stats ?? [
+            'board' => 'unknown',
+            'rooms' => 0,
+            'paths' => 0,
+            'doors' => 0,
+            'secrets' => 0,
+            'starts' => 0,
+            'has_explicit_paths' => false,
+        ],
     ];
+}
+
+if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') !== realpath(__FILE__)) {
+    return;
 }
 
 $files = glob($mapsDir . '/*.json') ?: [];
@@ -333,7 +685,7 @@ if (!$isCli) {
     echo '<!doctype html><meta charset="utf-8"><title>Проверка карт</title>';
     echo '<style>
         body{font-family:Arial,sans-serif;background:#101322;color:#eef2ff;padding:24px}
-        .ok{color:#70e38c}.err{color:#ff7b7b}.warn{color:#ffd166}
+        .ok{color:#70e38c}.err{color:#ff7b7b}.warn{color:#ffd166}.muted{color:rgba(238,242,255,.68)}
         section{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:16px;margin:12px 0}
         code{background:rgba(0,0,0,.25);padding:2px 6px;border-radius:6px}
     </style>';
@@ -353,6 +705,17 @@ foreach ($files as $file) {
     if ($isCli) {
         echo $name . ': ' . ($result['errors'] ? 'ERROR' : 'OK') . PHP_EOL;
 
+        $stats = $result['stats'] ?? [];
+
+        echo '  [INFO] board=' . ($stats['board'] ?? 'unknown') .
+            ', rooms=' . ($stats['rooms'] ?? 0) .
+            ', paths=' . ($stats['paths'] ?? 0) .
+            ', doors=' . ($stats['doors'] ?? 0) .
+            ', secrets=' . ($stats['secrets'] ?? 0) .
+            ', starts=' . ($stats['starts'] ?? 0) .
+            ', explicit_paths=' . (!empty($stats['has_explicit_paths']) ? 'yes' : 'no') .
+            PHP_EOL;
+
         foreach ($result['errors'] as $error) {
             echo '  [ERROR] ' . $error . PHP_EOL;
         }
@@ -366,6 +729,18 @@ foreach ($files as $file) {
 
     echo '<section>';
     echo '<h2><code>' . htmlspecialchars($name) . '</code> — ' . htmlspecialchars($result['title']) . '</h2>';
+
+    $stats = $result['stats'] ?? [];
+
+    echo '<p class="muted">';
+    echo 'Поле: <b>' . htmlspecialchars((string) ($stats['board'] ?? 'unknown')) . '</b> · ';
+    echo 'Комнат: <b>' . (int) ($stats['rooms'] ?? 0) . '</b> · ';
+    echo 'Коридоров: <b>' . (int) ($stats['paths'] ?? 0) . '</b> · ';
+    echo 'Дверей: <b>' . (int) ($stats['doors'] ?? 0) . '</b> · ';
+    echo 'Secret: <b>' . (int) ($stats['secrets'] ?? 0) . '</b> · ';
+    echo 'Стартов: <b>' . (int) ($stats['starts'] ?? 0) . '</b> · ';
+    echo 'Paths в JSON: <b>' . (!empty($stats['has_explicit_paths']) ? 'да' : 'нет') . '</b>';
+    echo '</p>';
 
     if (!$result['errors'] && !$result['warnings']) {
         echo '<p class="ok">OK: ошибок не найдено.</p>';
