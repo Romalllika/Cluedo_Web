@@ -107,6 +107,182 @@ function preview_starts(): array
     return $starts;
 }
 
+function preview_character_start_list(): array
+{
+    $starts = [];
+
+    foreach (characters() as $character) {
+        $starts[] = [
+            'name' => (string) $character['name'],
+            'x' => (int) $character['x'],
+            'y' => (int) $character['y'],
+            'color' => (string) $character['color'],
+        ];
+    }
+
+    return $starts;
+}
+
+function preview_distances_from(int $sx, int $sy, array $pathKeys): array
+{
+    $startKey = preview_cell_key($sx, $sy);
+
+    if (!isset($pathKeys[$startKey])) {
+        return [];
+    }
+
+    $dist = [$startKey => 0];
+    $queue = [[$sx, $sy]];
+
+    for ($i = 0; $i < count($queue); $i++) {
+        [$x, $y] = $queue[$i];
+        $base = $dist[preview_cell_key($x, $y)];
+
+        foreach (neighbor_cells($x, $y) as [$nx, $ny]) {
+            $key = preview_cell_key($nx, $ny);
+
+            if (!isset($pathKeys[$key]) || isset($dist[$key])) {
+                continue;
+            }
+
+            $dist[$key] = $base + 1;
+            $queue[] = [$nx, $ny];
+        }
+    }
+
+    return $dist;
+}
+
+function preview_room_distance_from_start(array $room, array $rooms, array $pathKeys, array $dist): ?int
+{
+    $entries = door_entry_cells($room, $pathKeys, $rooms);
+
+    if (!$entries) {
+        return null;
+    }
+
+    $best = null;
+
+    foreach ($entries as $entryKey => $entryPoint) {
+        if (!isset($dist[$entryKey])) {
+            continue;
+        }
+
+        /**
+         * +1 — вход из клетки коридора в комнату.
+         * Это соответствует текущей игровой логике distance_to_room().
+         */
+        $value = $dist[$entryKey] + 1;
+
+        if ($best === null || $value < $best) {
+            $best = $value;
+        }
+    }
+
+    return $best;
+}
+
+function preview_balance_analysis(array $rooms, array $pathKeys, array $starts): array
+{
+    $roomRows = [];
+    $allAverages = [];
+
+    foreach ($rooms as $roomName => $room) {
+        if (!is_array($room)) {
+            continue;
+        }
+
+        $distances = [];
+
+        foreach ($starts as $start) {
+            $dist = preview_distances_from((int) $start['x'], (int) $start['y'], $pathKeys);
+            $distanceToRoom = preview_room_distance_from_start($room, $rooms, $pathKeys, $dist);
+
+            if ($distanceToRoom !== null) {
+                $distances[] = $distanceToRoom;
+            }
+        }
+
+        if (!$distances) {
+            $roomRows[] = [
+                'room' => (string) $roomName,
+                'min' => null,
+                'avg' => null,
+                'max' => null,
+                'spread' => null,
+                'status' => 'unreachable',
+                'note' => 'Комната недостижима от стартовых позиций',
+            ];
+
+            continue;
+        }
+
+        $min = min($distances);
+        $max = max($distances);
+        $avg = array_sum($distances) / count($distances);
+        $spread = $max - $min;
+
+        $status = 'ok';
+        $note = 'OK';
+
+        /**
+         * Пороги пока мягкие и технические.
+         * Позже их можно вынести в конфиг допуска карт.
+         */
+        if ($min <= 2) {
+            $status = 'warn';
+            $note = 'Слишком близко к старту';
+        }
+
+        if ($avg >= 12) {
+            $status = 'warn';
+            $note = 'Средняя дистанция высокая';
+        }
+
+        if ($spread >= 6) {
+            $status = 'warn';
+            $note = 'Большой разброс между стартами';
+        }
+
+        $roomRows[] = [
+            'room' => (string) $roomName,
+            'min' => $min,
+            'avg' => round($avg, 1),
+            'max' => $max,
+            'spread' => $spread,
+            'status' => $status,
+            'note' => $note,
+        ];
+
+        $allAverages[] = $avg;
+    }
+
+    $summary = [
+        'rooms' => count($roomRows),
+        'avg_min' => null,
+        'avg_max' => null,
+        'avg_spread' => null,
+        'status' => 'ok',
+        'note' => 'OK',
+    ];
+
+    if ($allAverages) {
+        $summary['avg_min'] = round(min($allAverages), 1);
+        $summary['avg_max'] = round(max($allAverages), 1);
+        $summary['avg_spread'] = round(max($allAverages) - min($allAverages), 1);
+
+        if ($summary['avg_spread'] >= 5) {
+            $summary['status'] = 'warn';
+            $summary['note'] = 'Есть заметный разброс средней удалённости комнат';
+        }
+    }
+
+    return [
+        'summary' => $summary,
+        'rooms' => $roomRows,
+    ];
+}
+
 $maps = available_maps();
 $selectedMapId = normalize_map_id($_GET['map'] ?? 'classic_mansion');
 $map = preview_load_map($selectedMapId);
@@ -222,6 +398,9 @@ if (!is_array($rooms)) {
 
 $pathKeys = preview_path_keys($map);
 $starts = preview_starts();
+$startList = preview_character_start_list();
+
+$balanceAnalysis = preview_balance_analysis($rooms, $pathKeys, $startList);
 
 $reachablePathKeys = reachable_path_keys($pathKeys, $characterStartsForPreview);
 $isolatedPathKeys = array_diff_key($pathKeys, $reachablePathKeys);
@@ -616,6 +795,14 @@ foreach ($rooms as $roomName => $room) {
             margin-bottom: 22px;
         }
 
+        .tools-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 360px;
+            gap: 20px;
+            margin-top: 20px;
+            align-items: start;
+        }
+
         .details-grid {
             display: grid;
             grid-template-columns: minmax(0, 1fr) 360px;
@@ -697,12 +884,71 @@ foreach ($rooms as $roomName => $room) {
             gap: 10px;
             flex-wrap: wrap;
         }
+
+        .balance-box {
+            padding: 0;
+        }
+
+        .balance-box h2 {
+            margin: 0 0 12px;
+        }
+
+        .balance-summary {
+            display: grid;
+            gap: 6px;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .balance-summary div {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, .08);
+        }
+
+        .balance-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .balance-table th,
+        .balance-table td {
+            padding: 7px 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, .08);
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .balance-table th {
+            color: rgba(238, 242, 255, .68);
+            font-weight: 700;
+        }
+
+        .balance-table .num {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .balance-status-ok {
+            color: #70e38c;
+            font-weight: 700;
+        }
+
+        .balance-status-warn {
+            color: #ffd166;
+            font-weight: 700;
+        }
+
+        .balance-status-bad {
+            color: #ff7b7b;
+            font-weight: 700;
+        }
+
         .dev-box {
-            margin-top: 22px;
-            padding: 14px;
-            border-radius: 16px;
-            background: rgba(0, 0, 0, .18);
-            border: 1px solid rgba(255, 255, 255, .12);
+            padding: 0;
         }
 
         .dev-box h2 {
@@ -757,7 +1003,8 @@ foreach ($rooms as $roomName => $room) {
         @media (max-width: 1000px) {
             .top,
             .layout,
-            .details-grid {
+            .details-grid,
+            .tools-grid {
                 grid-template-columns: 1fr;
                 display: grid;
             }
@@ -1044,38 +1291,10 @@ foreach ($rooms as $roomName => $room) {
                     <a class="btn" href="../lobby.php">← В лобби</a>
                     <a class="btn" href="validate_maps.php">Проверить карты</a>
                 </div>
-                <div class="dev-box">
-                    <h2>Действия разработчика</h2>
-
-                    <div class="dev-row">
-                        <span class="muted">map_id</span>
-                        <b class="dev-value" id="devMapId"><?= e($selectedMapId) ?></b>
-                    </div>
-
-                    <div class="dev-row">
-                        <span class="muted">JSON</span>
-                        <span class="dev-value"><?= e($relativeMapFile) ?></span>
-                    </div>
-
-                    <div class="dev-row">
-                        <span class="muted">Статус</span>
-                        <b class="<?= $validationOk ? 'ok' : 'err' ?>">
-                            <?= $validationOk ? 'можно использовать' : 'есть ошибки' ?>
-                        </b>
-                    </div>
-
-                    <div class="dev-row">
-                        <span class="muted">Размер</span>
-                        <span class="dev-value"><?= $width ?> × <?= $height ?></span>
-                    </div>
-
-                    <button class="copy-btn" type="button" id="copyMapIdBtn">
-                        Скопировать map_id
-                    </button>
-                </div>
+                
             </aside>
         </div>
-            <div class="details-grid">
+        <div class="details-grid">
             <section class="panel details-panel">
                 <h2>Комнаты</h2>
 
@@ -1117,6 +1336,107 @@ foreach ($rooms as $roomName => $room) {
                             <b><?= e($line['to']) ?></b>
                         </div>
                     <?php endforeach; ?>
+                </div>
+            </section>
+        </div>
+        <div class="tools-grid">
+            <section class="panel details-panel">
+                <div class="balance-box">
+                    <h2>Анализ расстояний</h2>
+
+                    <?php
+                    $balanceSummary = $balanceAnalysis['summary'] ?? [];
+                    $balanceRows = $balanceAnalysis['rooms'] ?? [];
+                    $summaryStatus = (string) ($balanceSummary['status'] ?? 'ok');
+                    ?>
+
+                    <div class="balance-summary">
+                        <div>
+                            <span class="muted">Комнат</span>
+                            <b><?= (int) ($balanceSummary['rooms'] ?? 0) ?></b>
+                        </div>
+                        <div>
+                            <span class="muted">Средняя min/max</span>
+                            <b>
+                                <?= e((string) ($balanceSummary['avg_min'] ?? '—')) ?>
+                                /
+                                <?= e((string) ($balanceSummary['avg_max'] ?? '—')) ?>
+                            </b>
+                        </div>
+                        <div>
+                            <span class="muted">Разброс средних</span>
+                            <b class="<?= $summaryStatus === 'warn' ? 'balance-status-warn' : 'balance-status-ok' ?>">
+                                <?= e((string) ($balanceSummary['avg_spread'] ?? '—')) ?>
+                            </b>
+                        </div>
+                        <div>
+                            <span class="muted">Статус</span>
+                            <b class="<?= $summaryStatus === 'warn' ? 'balance-status-warn' : 'balance-status-ok' ?>">
+                                <?= e((string) ($balanceSummary['note'] ?? 'OK')) ?>
+                            </b>
+                        </div>
+                    </div>
+
+                    <table class="balance-table">
+                        <thead>
+                            <tr>
+                                <th>Комната</th>
+                                <th class="num">min</th>
+                                <th class="num">avg</th>
+                                <th class="num">max</th>
+                                <th>Оценка</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($balanceRows as $row): ?>
+                                <?php
+                                $status = (string) ($row['status'] ?? 'ok');
+                                $statusClass = $status === 'unreachable'
+                                    ? 'balance-status-bad'
+                                    : ($status === 'warn' ? 'balance-status-warn' : 'balance-status-ok');
+                                ?>
+                                <tr>
+                                    <td><?= e((string) $row['room']) ?></td>
+                                    <td class="num"><?= $row['min'] === null ? '—' : e((string) $row['min']) ?></td>
+                                    <td class="num"><?= $row['avg'] === null ? '—' : e((string) $row['avg']) ?></td>
+                                    <td class="num"><?= $row['max'] === null ? '—' : e((string) $row['max']) ?></td>
+                                    <td class="<?= $statusClass ?>"><?= e((string) ($row['note'] ?? 'OK')) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="panel details-panel">
+                <div class="dev-box">
+                    <h2>Действия разработчика</h2>
+
+                    <div class="dev-row">
+                        <span class="muted">map_id</span>
+                        <b class="dev-value" id="devMapId"><?= e($selectedMapId) ?></b>
+                    </div>
+
+                    <div class="dev-row">
+                        <span class="muted">JSON</span>
+                        <span class="dev-value"><?= e($relativeMapFile) ?></span>
+                    </div>
+
+                    <div class="dev-row">
+                        <span class="muted">Статус</span>
+                        <b class="<?= $validationOk ? 'ok' : 'err' ?>">
+                            <?= $validationOk ? 'можно использовать' : 'есть ошибки' ?>
+                        </b>
+                    </div>
+
+                    <div class="dev-row">
+                        <span class="muted">Размер</span>
+                        <span class="dev-value"><?= $width ?> × <?= $height ?></span>
+                    </div>
+
+                    <button class="copy-btn" type="button" id="copyMapIdBtn">
+                        Скопировать map_id
+                    </button>
                 </div>
             </section>
         </div>
