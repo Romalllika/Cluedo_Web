@@ -54,36 +54,26 @@ function characters(): array
 function available_maps(): array
 {
     return [
-
         'classic_mansion' => [
-
             'id' => 'classic_mansion',
-
             'title' => 'Классический особняк',
-
             'description' => 'Стабильная рабочая карта особняка.'
-
         ],
-
         'mansion_shifted_doors' => [
-
             'id' => 'mansion_shifted_doors',
-
             'title' => 'Особняк: другие двери',
-
             'description' => 'Та же карта особняка, но с немного изменёнными дверями комнат.'
-
         ],
         'mansion_evening' => [
-
             'id' => 'mansion_evening',
-
             'title' => 'Особняк: вечерняя схема',
-
             'description' => 'Альтернативная схема особняка с другими входами в часть комнат.'
-
         ],
-
+        'mansion_crossroads' => [
+            'id' => 'mansion_crossroads',
+            'title' => 'Особняк: перекрёстки',
+            'description' => 'Карта с более узкой сетью коридоров и несколькими центральными перекрёстками.'
+        ],
     ];
 }
 

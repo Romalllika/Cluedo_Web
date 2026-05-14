@@ -112,7 +112,7 @@ $selectedMapId = normalize_map_id($_GET['map'] ?? 'classic_mansion');
 $map = preview_load_map($selectedMapId);
 
 $mapFile = __DIR__ . '/../maps/' . $selectedMapId . '.json';
-
+$relativeMapFile = 'maps/' . $selectedMapId . '.json';
 $requiredRoomsForPreview = [
     'Кухня',
     'Бальный зал',
@@ -141,6 +141,76 @@ $validationResult = validate_map_file(
     $characterStartsForPreview
 );
 
+$validationErrors = $validationResult['errors'] ?? [];
+$validationWarnings = $validationResult['warnings'] ?? [];
+$validationStats = $validationResult['stats'] ?? [];
+$validationOk = !$validationErrors;
+
+$errorCells = [];
+$errorRooms = [];
+
+foreach ($validationErrors as $error) {
+    $error = (string) $error;
+
+    $roomName = null;
+
+    /**
+     * Достаём название комнаты из текста:
+     * Комната `Кабинет`: ...
+     */
+    $roomMarker = 'Комната `';
+    $roomStart = strpos($error, $roomMarker);
+
+    if ($roomStart !== false) {
+        $roomStart += strlen($roomMarker);
+        $roomEnd = strpos($error, '`', $roomStart);
+
+        if ($roomEnd !== false) {
+            $roomName = substr($error, $roomStart, $roomEnd - $roomStart);
+        }
+    }
+
+    /**
+     * Достаём последние координаты из текста ошибки.
+     *
+     * Работает для:
+     * - Комната `Кабинет`: у двери [12,14] нет соседней клетки коридора
+     * - paths[12]: точка [16,9] находится внутри комнаты
+     * - Стартовая позиция #1 [0,0] находится внутри комнаты
+     */
+    $left = strrpos($error, '[');
+    $right = strrpos($error, ']');
+
+    if ($left === false || $right === false || $right <= $left) {
+        if ($roomName !== null) {
+            $errorRooms[$roomName][] = $error;
+        }
+
+        continue;
+    }
+
+    $inside = substr($error, $left + 1, $right - $left - 1);
+    $parts = array_map('trim', explode(',', $inside));
+
+    if (count($parts) < 2 || !is_numeric($parts[0]) || !is_numeric($parts[1])) {
+        if ($roomName !== null) {
+            $errorRooms[$roomName][] = $error;
+        }
+
+        continue;
+    }
+
+    $x = (int) $parts[0];
+    $y = (int) $parts[1];
+    $key = preview_cell_key($x, $y);
+
+    $errorCells[$key][] = $error;
+
+    if ($roomName !== null) {
+        $errorRooms[$roomName][] = $error;
+    }
+}
+
 $board = $map['board'] ?? [];
 $width = (int) ($board['w'] ?? 17);
 $height = (int) ($board['h'] ?? 17);
@@ -153,9 +223,14 @@ if (!is_array($rooms)) {
 $pathKeys = preview_path_keys($map);
 $starts = preview_starts();
 
+$reachablePathKeys = reachable_path_keys($pathKeys, $characterStartsForPreview);
+$isolatedPathKeys = array_diff_key($pathKeys, $reachablePathKeys);
+$unreachableDoorCells = [];
+
 $doorByCell = [];
 $roomLabelByCell = [];
 $secretLines = [];
+$secretOverlayLines = [];
 
 foreach ($rooms as $roomName => $room) {
     if (!is_array($room)) {
@@ -166,6 +241,20 @@ foreach ($rooms as $roomName => $room) {
 
     if (is_array($door) && count($door) >= 2) {
         $doorByCell[preview_cell_key((int) $door[0], (int) $door[1])] = (string) $roomName;
+
+        $entries = door_entry_cells($room, $pathKeys, $rooms);
+        $hasReachableEntry = false;
+
+        foreach ($entries as $entryKey => $entryPoint) {
+            if (isset($reachablePathKeys[$entryKey])) {
+                $hasReachableEntry = true;
+                break;
+            }
+        }
+
+        if (!$hasReachableEntry) {
+            $unreachableDoorCells[preview_cell_key((int) $door[0], (int) $door[1])] = true;
+        }
     }
 
     [$cx, $cy] = preview_room_center($room);
@@ -178,8 +267,32 @@ foreach ($rooms as $roomName => $room) {
             'from' => (string) $roomName,
             'to' => $secret,
         ];
+
+        [$fromX, $fromY] = preview_room_center($room);
+        [$toX, $toY] = preview_room_center($rooms[$secret]);
+
+        $pairKeyParts = [(string) $roomName, $secret];
+        sort($pairKeyParts);
+        $pairKey = implode('|', $pairKeyParts);
+
+        /**
+         * Рисуем каждую пару один раз.
+         * В JSON secret обычно взаимный: Кухня -> Кабинет и Кабинет -> Кухня.
+         * Для preview одна линия между комнатами выглядит чище.
+         */
+        if (!isset($secretOverlayLines[$pairKey])) {
+            $secretOverlayLines[$pairKey] = [
+                'from' => (string) $roomName,
+                'to' => $secret,
+                'x1' => $fromX,
+                'y1' => $fromY,
+                'x2' => $toX,
+                'y2' => $toY,
+            ];
+        }
     }
 }
+
 
 ?>
 <!doctype html>
@@ -276,6 +389,45 @@ foreach ($rooms as $roomName => $room) {
             position: relative;
         }
 
+        .secret-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .secret-overlay line {
+            stroke: rgba(255, 209, 102, .55);
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-dasharray: 8 10;
+            filter: drop-shadow(0 0 3px rgba(255, 209, 102, .35));
+            opacity: .8;
+        }
+
+        .board.reachability-mode .cell.path.reachable-path {
+            background: rgba(112, 227, 140, .2);
+            border-color: rgba(112, 227, 140, .45);
+            box-shadow: inset 0 0 0 1px rgba(112, 227, 140, .35);
+        }
+
+        .board.reachability-mode .cell.path.isolated-path {
+            background: rgba(255, 123, 123, .22);
+            border-color: rgba(255, 123, 123, .7);
+            box-shadow:
+                inset 0 0 0 2px rgba(255, 123, 123, .65),
+                0 0 12px rgba(255, 123, 123, .35);
+        }
+
+        .board.reachability-mode .cell.unreachable-door-cell {
+            background: rgba(255, 123, 123, .24);
+            outline: 3px solid #ff7b7b;
+            outline-offset: -3px;
+            box-shadow:
+                inset 0 0 0 2px rgba(255, 123, 123, .75),
+                0 0 18px rgba(255, 123, 123, .42);
+        }
+
         .cell {
             width: 42px;
             height: 42px;
@@ -300,10 +452,66 @@ foreach ($rooms as $roomName => $room) {
             background: rgba(255, 255, 255, .16);
             border-color: rgba(255, 255, 255, .24);
         }
+        .cell.room.selectable-room {
+            cursor: pointer;
+        }
+
+        .cell.room.selected-room {
+            background: rgba(112, 227, 140, .24);
+            border-color: rgba(112, 227, 140, .75);
+            box-shadow:
+                inset 0 0 0 2px rgba(112, 227, 140, .9),
+                0 0 16px rgba(112, 227, 140, .35);
+        }
+
+        .room-item {
+            cursor: pointer;
+            transition: background .15s ease, border-color .15s ease, transform .15s ease;
+        }
+
+        .room-item:hover {
+            background: rgba(255, 255, 255, .11);
+        }
+
+        .room-item.selected-room-item {
+            background: rgba(112, 227, 140, .18);
+            border-color: rgba(112, 227, 140, .65);
+            transform: translateY(-1px);
+        }
 
         .cell.door {
             outline: 2px solid #ffd166;
             outline-offset: -3px;
+        }
+
+        .cell.error-cell {
+            outline: 2px solid #ff7b7b;
+            outline-offset: -3px;
+            box-shadow:
+                inset 0 0 0 2px rgba(255, 123, 123, .75),
+                0 0 18px rgba(255, 123, 123, .42);
+        }
+
+        .cell.door.error-cell {
+            outline: 3px solid #ff7b7b;
+            background: rgba(255, 123, 123, .18);
+        }
+
+        .room-item.error-room-item {
+            background: rgba(255, 123, 123, .14);
+            border-color: rgba(255, 123, 123, .6);
+        }
+
+        .room-item.error-room-item::after {
+            content: "Есть ошибка";
+            display: inline-flex;
+            margin-top: 8px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: rgba(255, 123, 123, .16);
+            color: #ffb3b3;
+            font-size: 12px;
+            font-weight: 700;
         }
 
         .cell.start {
@@ -316,6 +524,30 @@ foreach ($rooms as $roomName => $room) {
             top: 3px;
             font-size: 8px;
             opacity: .35;
+        }
+        .board.hide-coords .coord {
+            display: none;
+        }
+
+        .preview-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .preview-toggle {
+            border: 1px solid rgba(255, 255, 255, .18);
+            background: rgba(255, 255, 255, .1);
+            color: #fff;
+            border-radius: 14px;
+            padding: 9px 12px;
+            cursor: pointer;
+            font: inherit;
+        }
+
+        .preview-toggle:hover {
+            background: rgba(255, 255, 255, .16);
         }
 
         .room-label {
@@ -465,6 +697,50 @@ foreach ($rooms as $roomName => $room) {
             gap: 10px;
             flex-wrap: wrap;
         }
+        .dev-box {
+            margin-top: 22px;
+            padding: 14px;
+            border-radius: 16px;
+            background: rgba(0, 0, 0, .18);
+            border: 1px solid rgba(255, 255, 255, .12);
+        }
+
+        .dev-box h2 {
+            margin: 0 0 12px;
+        }
+
+        .dev-row {
+            display: grid;
+            grid-template-columns: 110px minmax(0, 1fr);
+            gap: 10px;
+            padding: 7px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, .08);
+            font-size: 14px;
+        }
+
+        .dev-row:last-child {
+            border-bottom: 0;
+        }
+
+        .dev-value {
+            overflow-wrap: anywhere;
+        }
+
+        .copy-btn {
+            margin-top: 10px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, .18);
+            background: rgba(255, 255, 255, .1);
+            color: #fff;
+            border-radius: 14px;
+            padding: 9px 12px;
+            cursor: pointer;
+            font: inherit;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255, 255, 255, .16);
+        }
 
         .btn {
             display: inline-flex;
@@ -538,10 +814,60 @@ foreach ($rooms as $roomName => $room) {
 
         <div class="layout">
             <section class="panel board-wrap">
+                <div class="preview-controls">
+                    <button class="preview-toggle" type="button" id="toggleCoordsBtn">
+                        Скрыть координаты
+                    </button>
+
+                    <button class="preview-toggle" type="button" id="toggleReachabilityBtn">
+                        Показать достижимость
+                    </button>
+                </div>
+
                 <div
                     class="board"
+                    id="mapBoard"
                     style="grid-template-columns: repeat(<?= $width ?>, 42px);"
                 >
+                <?php
+                $cellSize = 42;
+                $gapSize = 2;
+                $step = $cellSize + $gapSize;
+                $overlayWidth = $width * $cellSize + max(0, $width - 1) * $gapSize;
+                $overlayHeight = $height * $cellSize + max(0, $height - 1) * $gapSize;
+
+                $cellCenter = function (int $x, int $y) use ($cellSize, $step): array {
+                    return [
+                        $x * $step + (int) floor($cellSize / 2),
+                        $y * $step + (int) floor($cellSize / 2),
+                    ];
+                };
+                ?>
+
+                <?php if ($secretOverlayLines): ?>
+                    <svg
+                        class="secret-overlay"
+                        width="<?= $overlayWidth ?>"
+                        height="<?= $overlayHeight ?>"
+                        viewBox="0 0 <?= $overlayWidth ?> <?= $overlayHeight ?>"
+                        aria-hidden="true"
+                    >
+                        <?php foreach ($secretOverlayLines as $line): ?>
+                            <?php
+                            [$x1, $y1] = $cellCenter((int) $line['x1'], (int) $line['y1']);
+                            [$x2, $y2] = $cellCenter((int) $line['x2'], (int) $line['y2']);
+                            $labelX = (int) floor(($x1 + $x2) / 2);
+                            $labelY = (int) floor(($y1 + $y2) / 2);
+                            ?>
+                            <line
+                                x1="<?= $x1 ?>"
+                                y1="<?= $y1 ?>"
+                                x2="<?= $x2 ?>"
+                                y2="<?= $y2 ?>"
+                            />
+                        <?php endforeach; ?>
+                    </svg>
+                <?php endif; ?>
                     <?php for ($y = 0; $y < $height; $y++): ?>
                         <?php for ($x = 0; $x < $width; $x++): ?>
                             <?php
@@ -559,18 +885,50 @@ foreach ($rooms as $roomName => $room) {
 
                             if ($isPath) {
                                 $classes[] = 'path';
+
+                                if (isset($reachablePathKeys[$key])) {
+                                    $classes[] = 'reachable-path';
+                                }
+
+                                if (isset($isolatedPathKeys[$key])) {
+                                    $classes[] = 'isolated-path';
+                                }
                             }
 
                             if ($isDoor) {
                                 $classes[] = 'door';
                             }
 
+                            if (isset($unreachableDoorCells[$key])) {
+                                $classes[] = 'unreachable-door-cell';
+                            }
+
                             if ($isStart) {
                                 $classes[] = 'start';
                             }
+                            if (isset($errorCells[$key])) {
+                                $classes[] = 'error-cell';
+                            }
+                            $cellTitle = $x . ',' . $y . ($roomName ? ' · ' . $roomName : '');
+
+                            if (isset($errorCells[$key])) {
+                                $cellTitle .= ' · Ошибка: ' . implode(' | ', $errorCells[$key]);
+                            }
+
+                            if (isset($isolatedPathKeys[$key])) {
+                                $cellTitle .= ' · Недостижимый коридор';
+                            }
+
+                            if (isset($unreachableDoorCells[$key])) {
+                                $cellTitle .= ' · Дверь без достижимого входа';
+                            }
                             ?>
 
-                            <div class="<?= e(implode(' ', $classes)) ?>" title="<?= e($x . ',' . $y . ($roomName ? ' · ' . $roomName : '')) ?>">
+                            <div
+                                class="<?= e(implode(' ', $classes)) ?><?= $roomName !== null ? ' selectable-room' : '' ?>"
+                                title="<?= e($cellTitle) ?>"
+                                <?= $roomName !== null ? 'data-room="' . e($roomName) . '"' : '' ?>
+                            >
                                 <span class="coord"><?= $x ?>,<?= $y ?></span>
 
                                 <?php if (isset($roomLabelByCell[$key])): ?>
@@ -598,13 +956,6 @@ foreach ($rooms as $roomName => $room) {
 
             <aside class="panel side">
                 <h2><?= e((string) ($map['title'] ?? $selectedMapId)) ?></h2>
-                
-                <?php
-                $validationErrors = $validationResult['errors'] ?? [];
-                $validationWarnings = $validationResult['warnings'] ?? [];
-                $validationStats = $validationResult['stats'] ?? [];
-                $validationOk = !$validationErrors;
-                ?>
 
                 <div class="validation-box <?= $validationOk ? 'ok-box' : 'error-box' ?>">
                     <b class="<?= $validationOk ? 'ok' : 'err' ?>">
@@ -684,12 +1035,43 @@ foreach ($rooms as $roomName => $room) {
                     <div class="legend-item"><span class="ok">●</span> — стартовая позиция персонажа</div>
                     <div class="legend-item">Светлая клетка — комната</div>
                     <div class="legend-item">Синеватая клетка — коридор/доступный путь</div>
+                    <div class="legend-item">Пунктирная жёлтая линия — секретный проход</div>
+                    <div class="legend-item">В режиме достижимости: зелёный — доступный коридор, красный — недостижимый участок</div>
                 </div>
 
                 
                 <div class="actions">
                     <a class="btn" href="../lobby.php">← В лобби</a>
                     <a class="btn" href="validate_maps.php">Проверить карты</a>
+                </div>
+                <div class="dev-box">
+                    <h2>Действия разработчика</h2>
+
+                    <div class="dev-row">
+                        <span class="muted">map_id</span>
+                        <b class="dev-value" id="devMapId"><?= e($selectedMapId) ?></b>
+                    </div>
+
+                    <div class="dev-row">
+                        <span class="muted">JSON</span>
+                        <span class="dev-value"><?= e($relativeMapFile) ?></span>
+                    </div>
+
+                    <div class="dev-row">
+                        <span class="muted">Статус</span>
+                        <b class="<?= $validationOk ? 'ok' : 'err' ?>">
+                            <?= $validationOk ? 'можно использовать' : 'есть ошибки' ?>
+                        </b>
+                    </div>
+
+                    <div class="dev-row">
+                        <span class="muted">Размер</span>
+                        <span class="dev-value"><?= $width ?> × <?= $height ?></span>
+                    </div>
+
+                    <button class="copy-btn" type="button" id="copyMapIdBtn">
+                        Скопировать map_id
+                    </button>
                 </div>
             </aside>
         </div>
@@ -703,8 +1085,12 @@ foreach ($rooms as $roomName => $room) {
                         $door = $room['door'] ?? ['?', '?'];
                         $theme = (string) ($room['theme'] ?? 'default');
                         ?>
-                        <div class="room-item">
-                            <b><?= e((string) $roomName) ?></b><br>
+                        <div
+                            class="room-item <?= isset($errorRooms[(string) $roomName]) ? 'error-room-item' : '' ?>"
+                            data-room-item="<?= e((string) $roomName) ?>"
+                            title="<?= isset($errorRooms[(string) $roomName]) ? e(implode(' | ', $errorRooms[(string) $roomName])) : '' ?>"
+                        >
+                            <b><?= e((string) $roomName) ?></b><br>     
                             <span class="muted">
                                 x<?= (int) $room['x1'] ?>-<?= (int) $room['x2'] ?>,
                                 y<?= (int) $room['y1'] ?>-<?= (int) $room['y2'] ?> ·
@@ -735,6 +1121,163 @@ foreach ($rooms as $roomName => $room) {
             </section>
         </div>
     </div>
+    <script>
+    (function () {
+        const board = document.getElementById('mapBoard');
+        const btn = document.getElementById('toggleCoordsBtn');
+
+        if (!board || !btn) {
+            return;
+        }
+
+        const storageKey = 'mapPreview.showCoords';
+
+        function applyState(showCoords) {
+            board.classList.toggle('hide-coords', !showCoords);
+            btn.textContent = showCoords ? 'Скрыть координаты' : 'Показать координаты';
+            localStorage.setItem(storageKey, showCoords ? '1' : '0');
+        }
+
+        const saved = localStorage.getItem(storageKey);
+
+        /**
+         * По умолчанию координаты включены, потому что это tools-страница.
+         */
+        let showCoords = saved === null ? true : saved === '1';
+
+        applyState(showCoords);
+
+        btn.addEventListener('click', function () {
+            showCoords = !showCoords;
+            applyState(showCoords);
+        });
+    })();
+    </script>
+    <script>
+    (function () {
+        const roomCells = Array.from(document.querySelectorAll('[data-room]'));
+        const roomItems = Array.from(document.querySelectorAll('[data-room-item]'));
+
+        if (!roomCells.length && !roomItems.length) {
+            return;
+        }
+
+        let selectedRoom = null;
+
+        function clearSelection() {
+            roomCells.forEach(cell => cell.classList.remove('selected-room'));
+            roomItems.forEach(item => item.classList.remove('selected-room-item'));
+        }
+
+        function selectRoom(roomName) {
+            selectedRoom = roomName;
+            clearSelection();
+
+            roomCells.forEach(cell => {
+                if (cell.dataset.room === roomName) {
+                    cell.classList.add('selected-room');
+                }
+            });
+
+            roomItems.forEach(item => {
+                if (item.dataset.roomItem === roomName) {
+                    item.classList.add('selected-room-item');
+                }
+            });
+        }
+
+        roomCells.forEach(cell => {
+            cell.addEventListener('click', function () {
+                const roomName = this.dataset.room;
+
+                if (!roomName) {
+                    return;
+                }
+
+                selectRoom(roomName);
+            });
+        });
+
+        roomItems.forEach(item => {
+            item.addEventListener('click', function () {
+                const roomName = this.dataset.roomItem;
+
+                if (!roomName) {
+                    return;
+                }
+
+                selectRoom(roomName);
+
+                const firstCell = document.querySelector(`[data-room="${CSS.escape(roomName)}"]`);
+
+                if (firstCell) {
+                    firstCell.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center',
+                        inline: 'center'
+                    });
+                }
+            });
+        });
+    })();
+    </script>
+    <script>
+    (function () {
+        const board = document.getElementById('mapBoard');
+        const btn = document.getElementById('toggleReachabilityBtn');
+
+        if (!board || !btn) {
+            return;
+        }
+
+        const storageKey = 'mapPreview.showReachability';
+
+        function applyState(showReachability) {
+            board.classList.toggle('reachability-mode', showReachability);
+            btn.textContent = showReachability ? 'Скрыть достижимость' : 'Показать достижимость';
+            localStorage.setItem(storageKey, showReachability ? '1' : '0');
+        }
+
+        const saved = localStorage.getItem(storageKey);
+        let showReachability = saved === null ? false : saved === '1';
+
+        applyState(showReachability);
+
+        btn.addEventListener('click', function () {
+            showReachability = !showReachability;
+            applyState(showReachability);
+        });
+    })();
+    </script>
+    <script>
+    (function () {
+        const btn = document.getElementById('copyMapIdBtn');
+        const value = document.getElementById('devMapId');
+
+        if (!btn || !value) {
+            return;
+        }
+
+        btn.addEventListener('click', async function () {
+            const text = value.textContent.trim();
+
+            try {
+                await navigator.clipboard.writeText(text);
+                btn.textContent = 'map_id скопирован';
+
+                setTimeout(function () {
+                    btn.textContent = 'Скопировать map_id';
+                }, 1400);
+            } catch (e) {
+                btn.textContent = 'Не удалось скопировать';
+
+                setTimeout(function () {
+                    btn.textContent = 'Скопировать map_id';
+                }, 1400);
+            }
+        });
+    })();
+</script>
 </body>
 
 </html>
