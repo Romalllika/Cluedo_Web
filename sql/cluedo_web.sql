@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Хост: localhost
--- Время создания: Май 06 2026 г., 09:42
+-- Время создания: Май 15 2026 г., 07:40
 -- Версия сервера: 8.0.39
 -- Версия PHP: 8.2.23
 
@@ -33,32 +33,33 @@ CREATE TABLE `games` (
   `owner_id` int NOT NULL,
   `status` enum('waiting','active','finished') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'waiting',
   `max_players` tinyint NOT NULL DEFAULT '6',
+  `map_id` varchar(50) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'classic_mansion',
   `current_turn_player_id` int DEFAULT NULL,
   `phase` enum('join','roll','move','suggest','disprove','accuse','ended') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'join',
   `phase_started_at` datetime DEFAULT NULL,
   `dice_total` tinyint DEFAULT '0',
   `solution_suspect` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `solution_suspect_card_id` varchar(80) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `solution_weapon` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `solution_weapon_card_id` varchar(80) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `solution_room` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `solution_room_card_id` varchar(80) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `winner_user_id` int DEFAULT NULL,
   `stats_applied` tinyint(1) NOT NULL DEFAULT '0',
   `pending_suggester_id` int DEFAULT NULL,
   `pending_disprover_id` int DEFAULT NULL,
   `pending_suspect` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `pending_suspect_card_id` varchar(80) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `pending_weapon` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `pending_weapon_card_id` varchar(80) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `pending_room` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `pending_room_card_id` varchar(80) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `shown_card_name` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `shown_card_id` varchar(80) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `shown_by_user_id` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Дамп данных таблицы `games`
---
-
-INSERT INTO `games` (`id`, `title`, `owner_id`, `status`, `max_players`, `current_turn_player_id`, `phase`, `phase_started_at`, `dice_total`, `solution_suspect`, `solution_weapon`, `solution_room`, `winner_user_id`, `stats_applied`, `pending_suggester_id`, `pending_disprover_id`, `pending_suspect`, `pending_weapon`, `pending_room`, `shown_card_name`, `shown_by_user_id`, `created_at`, `updated_at`) VALUES
-(3, 'Матч 09:02', 1, 'waiting', 6, NULL, 'join', NULL, 0, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-05-06 09:14:59', '2026-05-06 09:14:59');
 
 -- --------------------------------------------------------
 
@@ -74,18 +75,6 @@ CREATE TABLE `game_character_positions` (
   `pos_y` int NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Дамп данных таблицы `game_character_positions`
---
-
-INSERT INTO `game_character_positions` (`id`, `game_id`, `character_name`, `pos_x`, `pos_y`, `created_at`) VALUES
-(1, 3, 'Алекс Громов', 8, 9, '2026-05-06 09:14:59'),
-(2, 3, 'Мария Скарлет', 7, 9, '2026-05-06 09:14:59'),
-(3, 3, 'Профессор Фиолетов', 9, 9, '2026-05-06 09:14:59'),
-(4, 3, 'Виктор Олив', 8, 8, '2026-05-06 09:14:59'),
-(5, 3, 'Елена Белая', 7, 8, '2026-05-06 09:14:59'),
-(6, 3, 'София Синяя', 9, 8, '2026-05-06 09:14:59');
 
 -- --------------------------------------------------------
 
@@ -121,13 +110,6 @@ CREATE TABLE `game_players` (
   `joined_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Дамп данных таблицы `game_players`
---
-
-INSERT INTO `game_players` (`id`, `game_id`, `user_id`, `character_name`, `seat_no`, `turn_order`, `pos_x`, `pos_y`, `is_eliminated`, `afk_misses`, `joined_at`) VALUES
-(1, 3, 1, 'Алекс Громов', 0, 1, 8, 9, 0, 0, '2026-05-06 09:14:59');
-
 -- --------------------------------------------------------
 
 --
@@ -139,6 +121,7 @@ CREATE TABLE `player_cards` (
   `game_id` int NOT NULL,
   `user_id` int NOT NULL,
   `card_type` enum('suspect','weapon','room') COLLATE utf8mb4_general_ci NOT NULL,
+  `card_id` varchar(80) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `card_name` varchar(50) COLLATE utf8mb4_general_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -206,7 +189,8 @@ ALTER TABLE `game_players`
 ALTER TABLE `player_cards`
   ADD PRIMARY KEY (`id`),
   ADD KEY `game_id` (`game_id`),
-  ADD KEY `user_id` (`user_id`);
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `idx_player_cards_card_id` (`card_id`);
 
 --
 -- Индексы таблицы `users`
@@ -223,13 +207,13 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT для таблицы `games`
 --
 ALTER TABLE `games`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT для таблицы `game_character_positions`
 --
 ALTER TABLE `game_character_positions`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1477;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12073;
 
 --
 -- AUTO_INCREMENT для таблицы `game_logs`
@@ -241,7 +225,7 @@ ALTER TABLE `game_logs`
 -- AUTO_INCREMENT для таблицы `game_players`
 --
 ALTER TABLE `game_players`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 --
 -- AUTO_INCREMENT для таблицы `player_cards`

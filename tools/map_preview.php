@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/data.php';
+require_once __DIR__ . '/../includes/maps.php';
+require_once __DIR__ . '/../includes/movement.php';
 require_once __DIR__ . '/validate_maps.php';
 
 function e(string $value): string

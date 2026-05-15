@@ -1,6 +1,10 @@
-<?php require 'includes/config.php';
+<?php 
+require 'includes/config.php';
 require_auth();
 require 'includes/data.php';
+require 'includes/maps.php';
+require 'includes/movement.php';
+
 $gid = (int) ($_GET['id'] ?? 0);
 $st = db()->prepare('SELECT g.*, u.username owner FROM games g JOIN users u ON u.id=g.owner_id WHERE g.id=?');
 $st->execute([$gid]);

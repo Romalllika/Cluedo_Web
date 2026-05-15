@@ -2,6 +2,8 @@
 
 require 'includes/config.php';
 require 'includes/data.php';
+require 'includes/maps.php';
+
 require_auth();
 /**
  * Удаляем только реально пустые ожидающие лобби.

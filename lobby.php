@@ -1,6 +1,7 @@
 <?php require 'includes/config.php';
 require_auth();
 require 'includes/data.php';
+require 'includes/maps.php';
 $uid = current_user_id();
 // Автоудаление пустых ожидающих лобби
 // db()->query("DELETE g FROM games g LEFT JOIN game_players gp ON gp.game_id=g.id WHERE g.status='waiting' AND gp.id IS NULL");

@@ -3,6 +3,7 @@
 require 'includes/config.php';
 require_auth();
 require 'includes/data.php';
+require 'includes/maps.php';
 
 $uid = current_user_id();
 $gid = (int) ($_POST['game_id'] ?? $_GET['game_id'] ?? 0);
