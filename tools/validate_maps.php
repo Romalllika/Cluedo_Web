@@ -27,13 +27,13 @@ $requiredRooms = [
     'Кабинет',
 ];
 
-$characterStarts = [
-    [8, 9],
-    [7, 9],
-    [9, 9],
-    [8, 8],
-    [7, 8],
-    [9, 8],
+$defaultCharacterStarts = [
+    'Алекс Громов' => [8, 9],
+    'Мария Скарлет' => [7, 9],
+    'Профессор Фиолетов' => [9, 9],
+    'Виктор Олив' => [8, 8],
+    'Елена Белая' => [7, 8],
+    'София Синяя' => [9, 8],
 ];
 
 function add_error(array &$errors, string $message): void
@@ -44,6 +44,46 @@ function add_error(array &$errors, string $message): void
 function cell_key(int $x, int $y): string
 {
     return $x . ':' . $y;
+}
+function map_character_starts_for_validation(
+    array $map,
+    array $defaultCharacterStarts,
+    array &$errors,
+    array &$warnings
+): array {
+    $starts = $defaultCharacterStarts;
+
+    if (!isset($map['starts'])) {
+        $warnings[] = 'В карте нет блока starts. Используются стартовые позиции по умолчанию.';
+        return array_values($starts);
+    }
+
+    if (!is_array($map['starts'])) {
+        add_error($errors, 'starts должен быть объектом вида "Имя персонажа": [x,y]');
+        return array_values($starts);
+    }
+
+    foreach ($map['starts'] as $name => $point) {
+        if (!isset($defaultCharacterStarts[$name])) {
+            $warnings[] = "starts содержит неизвестного персонажа `$name`";
+            continue;
+        }
+
+        if (!is_array($point) || count($point) < 2) {
+            add_error($errors, "starts.`$name` должен быть массивом [x,y]");
+            continue;
+        }
+
+        $starts[$name] = [(int) $point[0], (int) $point[1]];
+    }
+
+    foreach ($defaultCharacterStarts as $name => $fallback) {
+        if (!isset($map['starts'][$name])) {
+            $warnings[] = "В starts не указан персонаж `$name`. Используется fallback.";
+        }
+    }
+
+    return array_values($starts);
 }
 
 function default_path_keys(array $characterStarts): array
@@ -432,7 +472,7 @@ function validate_map_file(
     string $file,
     string $mapsDir,
     array $requiredRooms,
-    array $characterStarts
+    array $defaultCharacterStarts
 ): array {
     $errors = [];
     $warnings = [];
@@ -460,6 +500,12 @@ function validate_map_file(
 
     $id = trim((string) ($data['id'] ?? ''));
     $title = (string) ($data['title'] ?? $id ?: $baseName);
+    $characterStarts = map_character_starts_for_validation(
+        $data,
+        $defaultCharacterStarts,
+        $errors,
+        $warnings
+    );
 
     if ($id === '') {
         add_error($errors, 'Не указан id карты');
@@ -695,8 +741,7 @@ if (!$isCli) {
 $hasErrors = false;
 
 foreach ($files as $file) {
-    $result = validate_map_file($file, $mapsDir, $requiredRooms, $characterStarts);
-    $name = basename($file);
+    $result = validate_map_file($file, $mapsDir, $requiredRooms, $defaultCharacterStarts);    $name = basename($file);
 
     if ($result['errors']) {
         $hasErrors = true;

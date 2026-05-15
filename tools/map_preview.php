@@ -90,33 +90,43 @@ function preview_path_keys(array $map): array
     return $keys;
 }
 
-function preview_starts(): array
+function preview_starts(array $startsByName): array
 {
     $starts = [];
+    $colors = [];
 
     foreach (characters() as $character) {
-        $x = (int) $character['x'];
-        $y = (int) $character['y'];
+        $colors[$character['name']] = (string) $character['color'];
+    }
+
+    foreach ($startsByName as $name => [$x, $y]) {
+        $x = (int) $x;
+        $y = (int) $y;
 
         $starts[preview_cell_key($x, $y)][] = [
-            'name' => (string) $character['name'],
-            'color' => (string) $character['color'],
+            'name' => (string) $name,
+            'color' => $colors[$name] ?? '#f5c542',
         ];
     }
 
     return $starts;
 }
 
-function preview_character_start_list(): array
+function preview_character_start_list(array $startsByName): array
 {
     $starts = [];
+    $colors = [];
 
     foreach (characters() as $character) {
+        $colors[$character['name']] = (string) $character['color'];
+    }
+
+    foreach ($startsByName as $name => [$x, $y]) {
         $starts[] = [
-            'name' => (string) $character['name'],
-            'x' => (int) $character['x'],
-            'y' => (int) $character['y'],
-            'color' => (string) $character['color'],
+            'name' => (string) $name,
+            'x' => (int) $x,
+            'y' => (int) $y,
+            'color' => $colors[$name] ?? '#f5c542',
         ];
     }
 
@@ -301,20 +311,14 @@ $requiredRoomsForPreview = [
     'Кабинет',
 ];
 
-$characterStartsForPreview = [];
-
-foreach (characters() as $character) {
-    $characterStartsForPreview[] = [
-        (int) $character['x'],
-        (int) $character['y']
-    ];
-}
+$startsByNameForPreview = character_starts_from_config($map);
+$characterStartsForPreview = array_values($startsByNameForPreview);
 
 $validationResult = validate_map_file(
     $mapFile,
     __DIR__ . '/../maps',
     $requiredRoomsForPreview,
-    $characterStartsForPreview
+    default_character_starts()
 );
 
 $validationErrors = $validationResult['errors'] ?? [];
@@ -397,8 +401,8 @@ if (!is_array($rooms)) {
 }
 
 $pathKeys = preview_path_keys($map);
-$starts = preview_starts();
-$startList = preview_character_start_list();
+$starts = preview_starts($startsByNameForPreview);
+$startList = preview_character_start_list($startsByNameForPreview);
 
 $balanceAnalysis = preview_balance_analysis($rooms, $pathKeys, $startList);
 

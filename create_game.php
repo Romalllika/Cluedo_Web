@@ -30,6 +30,9 @@ try {
     $seat = 0;
     $c = $chars[$seat];
 
+    $starts = map_character_starts($gid);
+    [$startX, $startY] = $starts[$c['name']] ?? [(int) $c['x'], (int) $c['y']];
+
     $join = $db->prepare(
         'INSERT INTO game_players
             (game_id, user_id, character_name, seat_no, turn_order, pos_x, pos_y)
@@ -43,8 +46,8 @@ try {
         $c['name'],
         $seat,
         1,
-        $c['x'],
-        $c['y']
+        $startX,
+        $startY
     ]);
 
     $db->commit();

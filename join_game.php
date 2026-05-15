@@ -68,7 +68,8 @@ try {
     }
 
     $c = $chars[$seat];
-
+    $starts = map_character_starts($gid);
+    [$startX, $startY] = $starts[$c['name']] ?? [(int) $c['x'], (int) $c['y']];
     $order = $count + 1;
 
     $st = $db->prepare(
@@ -84,8 +85,8 @@ try {
         $c['name'],
         $seat,
         $order,
-        $c['x'],
-        $c['y']
+        $startX,
+        $startY
     ]);
 
     $db->commit();

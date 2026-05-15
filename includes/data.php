@@ -50,6 +50,67 @@ function characters(): array
         ['name' => 'София Синяя', 'x' => 9, 'y' => 8, 'color' => '#42a5f5'],
     ];
 }
+function default_character_starts(): array
+{
+    $starts = [];
+
+    foreach (characters() as $c) {
+        $starts[$c['name']] = [(int) $c['x'], (int) $c['y']];
+    }
+
+    return $starts;
+}
+
+function character_starts_from_config(array $map): array
+{
+    $starts = default_character_starts();
+
+    if (!isset($map['starts']) || !is_array($map['starts'])) {
+        return $starts;
+    }
+
+    foreach ($starts as $name => $fallback) {
+        $point = $map['starts'][$name] ?? null;
+
+        if (!is_array($point) || count($point) < 2) {
+            continue;
+        }
+
+        $starts[$name] = [(int) $point[0], (int) $point[1]];
+    }
+
+    return $starts;
+}
+
+function map_character_starts(int $gid = 0): array
+{
+    $map = load_map_config($gid);
+
+    return character_starts_from_config($map);
+}
+
+function characters_for_game(int $gid = 0): array
+{
+    $starts = map_character_starts($gid);
+    $characters = characters();
+
+    foreach ($characters as &$character) {
+        $name = $character['name'];
+
+        if (!isset($starts[$name])) {
+            continue;
+        }
+
+        [$x, $y] = $starts[$name];
+
+        $character['x'] = (int) $x;
+        $character['y'] = (int) $y;
+    }
+
+    unset($character);
+
+    return $characters;
+}
 
 function available_maps(): array
 {
@@ -219,8 +280,8 @@ function default_board_paths(): array
     /**
      * Стартовые позиции.
      */
-    foreach (characters() as $c) {
-        $add((int) $c['x'], (int) $c['y']);
+    foreach (default_character_starts() as [$x, $y]) {
+        $add((int) $x, (int) $y);
     }
 
     return array_values($paths);
@@ -260,8 +321,8 @@ function board_paths(int $gid = 0): array
      * Стартовые позиции всегда считаем доступными.
      * Это защита от карты, где автор забыл добавить стартовые клетки в paths.
      */
-    foreach (characters() as $c) {
-        $add((int) $c['x'], (int) $c['y']);
+    foreach (map_character_starts($gid) as [$x, $y]) {
+        $add((int) $x, (int) $y);
     }
 
     return array_values($paths);
@@ -522,6 +583,6 @@ function board_cells(int $gid = 0): array
         'mapTitle' => $map['title'] ?? 'Карта',
         'rooms' => mansion_rooms($gid),
         'paths' => board_paths($gid),
-        'starts' => characters()
+        'starts' => characters_for_game($gid)
     ];
 }

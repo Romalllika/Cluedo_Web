@@ -74,7 +74,7 @@ function ensure_character_positions(int $gid): void
             (?,?,?,?)'
     );
 
-    foreach (characters() as $c) {
+    foreach (characters_for_game($gid) as $c) {
         $insert->execute([
             $gid,
             $c['name'],
@@ -91,9 +91,7 @@ function reset_character_positions(int $gid): void
 
     $startByName = [];
 
-    foreach (characters() as $c) {
-        $startByName[$c['name']] = [(int) $c['x'], (int) $c['y']];
-    }
+    $startByName = map_character_starts($gid);
 
     $players = players($gid);
 
@@ -696,7 +694,7 @@ if ($a === 'state') {
         'weapons' => weapons(),
         'roomNames' => rooms(),
         'availableMaps' => available_maps(),
-        'characters' => characters()
+        'characters' => characters_for_game($gid)
     ]);
 }
 

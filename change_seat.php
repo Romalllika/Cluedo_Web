@@ -57,15 +57,18 @@ try {
 
     $char = $chars[$seat];
 
+    $starts = map_character_starts($gid);
+    [$startX, $startY] = $starts[$char['name']] ?? [(int) $char['x'], (int) $char['y']];
+
     $db->prepare(
         'UPDATE game_players
-         SET seat_no=?, character_name=?, pos_x=?, pos_y=?
-         WHERE game_id=? AND user_id=?'
+        SET seat_no=?, character_name=?, pos_x=?, pos_y=?
+        WHERE game_id=? AND user_id=?'
     )->execute([
         $seat,
         $char['name'],
-        $char['x'],
-        $char['y'],
+        $startX,
+        $startY,
         $gid,
         $uid
     ]);
