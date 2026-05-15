@@ -433,6 +433,12 @@ if ($a === 'start') {
     reset_character_positions($gid);
     $ps = players($gid);
 
+    if (!$ps) {
+        json_out(['error' => 'Нет игроков для старта']);
+    }
+
+    $firstUid = (int) $ps[0]['user_id'];
+
     $suspectCards = suspect_cards();
     $weaponCards = weapon_cards();
     $roomCards = room_cards();
