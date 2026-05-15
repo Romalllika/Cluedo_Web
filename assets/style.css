@@ -902,3 +902,25 @@ td {
     opacity: .65;
     color: #2a1c0f;
 }
+
+.card-image-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 12px;
+  font-size: 13px;
+  opacity: .85;
+}
+
+.card-image-toggle input {
+  transform: translateY(1px);
+}
+
+.card-img {
+  width: 100%;
+  max-height: 120px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  background: rgba(255,255,255,.08);
+}

@@ -14,6 +14,63 @@ const canvas = $('#mansionCanvas');
 const ctx = canvas ? canvas.getContext('2d') : null;
 const meta = { cell: 40, ox: 0, oy: 0, clickable: [] };
 
+const cardImagePrefKey = 'cluedo.showCardImages';
+
+function shouldShowCardImages() {
+  return localStorage.getItem(cardImagePrefKey) !== '0';
+}
+
+function setShowCardImages(value) {
+  localStorage.setItem(cardImagePrefKey, value ? '1' : '0');
+}
+
+function cardLabel(card) {
+  return card?.title || card?.card_name || card?.legacy_name || card?.name || '';
+}
+
+function cardLegacyName(card) {
+  return card?.legacy_name || card?.card_name || card?.title || '';
+}
+
+function cardId(card) {
+  return card?.id || card?.card_id || '';
+}
+
+function cardsOfType(type) {
+  if (!state) {
+    return [];
+  }
+
+  if (type === 'suspect') {
+    return state.suspectCards || [];
+  }
+
+  if (type === 'weapon') {
+    return state.weaponCards || [];
+  }
+
+  if (type === 'room') {
+    return state.roomCards || [];
+  }
+
+  return [];
+}
+
+function cardOption(card) {
+  return `<option value="${escapeHtml(cardId(card))}" data-name="${escapeHtml(cardLegacyName(card))}">
+    ${escapeHtml(cardLabel(card))}
+  </option>`;
+}
+
+function selectedCardPayload(select, legacyKey, idKey) {
+  const option = select.options[select.selectedIndex];
+
+  return {
+    [legacyKey]: option ? option.dataset.name : select.value,
+    [idKey]: select.value
+  };
+}
+
 function api(action, data = {}) {
   const fd = new FormData();
   fd.append('action', action);
@@ -349,9 +406,13 @@ function openShowCardModal(p) {
 
         <div class="show-card-list">
           ${cards.map(c => `
-            <button class="show-card-choice" data-card="${c.card_name}">
-              <b>${c.card_name}</b>
-              <small>${c.card_type}</small>
+            <button
+              class="show-card-choice"
+              data-card="${escapeHtml(c.card_name)}"
+              data-card-id="${escapeHtml(c.card_id || '')}"
+            >
+              <b>${escapeHtml(c.title || c.card_name)}</b>
+              <small>${escapeHtml(c.card_type)}</small>
             </button>
           `).join('')}
         </div>
@@ -362,7 +423,8 @@ function openShowCardModal(p) {
   document.querySelectorAll('.show-card-choice').forEach(btn => {
     btn.onclick = async () => {
       const r = await api('showCard', {
-        card: btn.dataset.card
+        card: btn.dataset.card,
+        card_id: btn.dataset.cardId || ''
       });
 
       if (r.error) {
@@ -664,10 +726,11 @@ function drawPlayers() {
 }
 if (canvas) { canvas.addEventListener('click', async e => { if (!state || +state.game.current_turn_player_id !== +CURRENT_USER_ID || state.game.phase !== 'move') return; const r = canvas.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top; const t = meta.clickable.find(a => x >= a.px && x <= a.px + a.w && y >= a.py && y <= a.py + a.h); if (!t) return; const res = await api('move', { x: t.x, y: t.y }); if (res.error) return showErrorNotification(res.error); refresh(); }); }
 function renderCards() {
-  const cardsKey = state.myCards
-    .map(c => c.card_type + ':' + c.card_name)
-    .join('|');
+  const showImages = shouldShowCardImages();
 
+  const cardsKey = state.myCards
+    .map(c => c.card_type + ':' + (c.card_id || c.card_name) + ':' + (showImages ? 'img' : 'text'))
+    .join('|');
   /**
    * Если набор карт не изменился — вообще не перерисовываем.
    * Это убирает постоянное повторение flip-анимации при refresh().
@@ -681,13 +744,36 @@ function renderCards() {
   const shouldAnimate = !cardsRenderedOnce && state.myCards.length > 0;
 
   $('#myCards').innerHTML =
-    '<h3>Мои карты</h3>' +
-    state.myCards.map(c => `
+    `<h3>Мои карты</h3>
+     <label class="card-image-toggle">
+     <input type="checkbox" id="toggleCardImages" ${showImages ? 'checked' : ''}>
+     Показывать изображения карточек
+    </label>` +
+    state.myCards.map(c => {
+      const label = escapeHtml(c.title || c.card_name);
+      const image = c.image || null;
+      const imageHtml = showImages && image
+        ? `<img class="card-img" src="${escapeHtml(image)}" alt="${label}" loading="lazy">`
+        : '';
+
+      return `
       <div class="card ${shouldAnimate ? 'flip' : ''}">
-        <b>${c.card_name}</b>
-        <small>${c.card_type}</small>
+        ${imageHtml}
+        <b>${label}</b>
+        <small>${escapeHtml(c.card_type)}</small>
       </div>
-    `).join('');
+    `;
+    }).join('');
+
+  const toggle = $('#toggleCardImages');
+
+  if (toggle) {
+    toggle.onchange = () => {
+      setShowCardImages(toggle.checked);
+      lastCardsKey = '';
+      renderCards();
+    };
+  }
 
   cardsRenderedOnce = true;
 }
@@ -868,12 +954,18 @@ $('#suggestBtn').onclick = () => selectTriple('Сделать предложен
 function selectTriple(title, accuse) {
   const me = state.players.find(p => +p.user_id === +CURRENT_USER_ID);
   const myCharacter = me ? me.character_name : null;
-  const suspectOptions = state.suspects
-    .filter(x => accuse || x !== myCharacter)
-    .map(x => `<option>${x}</option>`)
+
+  const suspectOptions = cardsOfType('suspect')
+    .filter(c => accuse || cardLegacyName(c) !== myCharacter)
+    .map(cardOption)
     .join('');
+
+  const weaponOptions = cardsOfType('weapon')
+    .map(cardOption)
+    .join('');
+
   const roomSelect = accuse
-    ? `<select id="mRoom">${state.roomNames.map(x => `<option>${x}</option>`).join('')}</select>`
+    ? `<select id="mRoom">${cardsOfType('room').map(cardOption).join('')}</select>`
     : '<p>Комната берётся автоматически по текущей комнате фишки.</p>';
 
   openModal(
@@ -885,7 +977,7 @@ function selectTriple(title, accuse) {
         </select>
 
         <select id="mWeap">
-          ${state.weapons.map(x => `<option>${x}</option>`).join('')}
+          ${weaponOptions}
         </select>
 
         ${roomSelect}
@@ -896,13 +988,16 @@ function selectTriple(title, accuse) {
   );
 
   $('#mSend').onclick = async () => {
+    const susPayload = selectedCardPayload($('#mSus'), 'suspect', 'suspect_id');
+    const weapPayload = selectedCardPayload($('#mWeap'), 'weapon', 'weapon_id');
+
     const data = {
-      suspect: $('#mSus').value,
-      weapon: $('#mWeap').value
+      ...susPayload,
+      ...weapPayload
     };
 
     if (accuse) {
-      data.room = $('#mRoom').value;
+      Object.assign(data, selectedCardPayload($('#mRoom'), 'room', 'room_id'));
     }
 
     if (accuse) {
