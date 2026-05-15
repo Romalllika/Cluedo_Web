@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Хост: localhost
--- Время создания: Май 15 2026 г., 07:40
+-- Время создания: Май 15 2026 г., 14:53
 -- Версия сервера: 8.0.39
 -- Версия PHP: 8.2.23
 
@@ -207,13 +207,13 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT для таблицы `games`
 --
 ALTER TABLE `games`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
 -- AUTO_INCREMENT для таблицы `game_character_positions`
 --
 ALTER TABLE `game_character_positions`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12073;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13027;
 
 --
 -- AUTO_INCREMENT для таблицы `game_logs`
@@ -225,7 +225,7 @@ ALTER TABLE `game_logs`
 -- AUTO_INCREMENT для таблицы `game_players`
 --
 ALTER TABLE `game_players`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- AUTO_INCREMENT для таблицы `player_cards`

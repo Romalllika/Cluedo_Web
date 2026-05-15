@@ -122,34 +122,21 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
                     const isWaiting = g.status === 'waiting';
 
                     return `
-                    <article class="game-card">
+                        <article class="game-card">
+                            <h3>${escapeHtml(g.title || 'Матч')}</h3>
 
-                        <h3><?= h($g['title']) ?></h3>
+                            <p>Создатель: ${escapeHtml(g.owner_name || g.owner || '—')}</p>
 
-                        <p>Создатель: <?= h($g['owner']) ?></p>
+                            <p>Карта: <b>${escapeHtml(g.map_title || 'Классический особняк')}</b></p>
 
-                        <?php
+                            <p class="badge ${escapeHtml(g.status || '')}">
+                            ${isWaiting ? 'Ожидает игроков' : 'Идёт игра'} ·
+                            ${Number(g.players_count || g.players || 0)} / ${Number(g.max_players || 0)}
+                            </p>
 
-                        $mapId = normalize_map_id($g['map_id'] ?? 'classic_mansion');
-
-                        $mapTitle = $maps[$mapId]['title'] ?? $mapId;
-
-                        ?>
-
-                        <p>Карта: <b><?= h($mapTitle) ?></b></p>
-
-                        <p class="badge <?= h($g['status']) ?>">
-
-                            <?= $g['status'] === 'waiting' ? 'Ожидает игроков' : 'Идёт игра' ?> ·
-
-                            <?= (int) $g['players'] ?>/<?= (int) $g['max_players'] ?>
-
-                        </p>
-
-                        <a class="btn" href="game.php?id=<?= (int) $g['id'] ?>">Открыть</a>
-
-                    </article>
-                `;
+                            <a class="btn" href="game.php?id=${Number(g.id)}">Открыть</a>
+                        </article>
+                    `;
                 }).join('');
             } catch (e) {
                 console.error('Lobby refresh failed', e);

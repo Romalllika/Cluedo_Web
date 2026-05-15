@@ -83,7 +83,16 @@ function openModal(title, html) { $('#modalTitle').textContent = title; $('#moda
 let fatalGameErrorShown = false;
 
 async function refresh() {
-  state = await api('state');
+  try {
+    state = await api('state');
+  } catch (e) {
+    console.warn('Refresh failed', e);
+    return;
+  }
+
+  if (!state) {
+    return;
+  }
 
   if (state.error) {
     if (!fatalGameErrorShown) {
@@ -451,6 +460,7 @@ function renderPlayersAndSeats() {
   }
 
   const seatsBox = $('#seats');
+  const seatsTitle = $('#seatsTitle');
 
   if (!seatsBox) {
     return;
@@ -458,7 +468,16 @@ function renderPlayersAndSeats() {
 
   if (state.game.status !== 'waiting') {
     seatsBox.innerHTML = '';
+
+    if (seatsTitle) {
+      seatsTitle.style.display = 'none';
+    }
+
     return;
+  }
+
+  if (seatsTitle) {
+    seatsTitle.style.display = '';
   }
 
   const taken = new Map();

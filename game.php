@@ -44,7 +44,7 @@ $taken = array_column($players, 'seat_no');
             <div id="players"></div>
 
             <?php if ($game['status'] === 'waiting'): ?>
-                <h3>Места / персонажи</h3>
+                <h3 id="seatsTitle">Места / персонажи</h3>
                 <div class="seats" id="seats"></div>
             <?php endif; ?>
 
