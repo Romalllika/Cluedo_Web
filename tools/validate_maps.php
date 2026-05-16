@@ -2,6 +2,12 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../includes/config.php';
+
+if (PHP_SAPI !== 'cli') {
+    require_auth();
+}
+
 /**
  * Валидатор JSON-карт.
  *
@@ -36,6 +42,12 @@ $defaultCharacterStarts = [
     'София Синяя' => [9, 8],
 ];
 
+$cardLimits = [
+    'suspects' => 6,
+    'weapons' => 6,
+    'rooms' => 16,
+];
+
 function add_error(array &$errors, string $message): void
 {
     $errors[] = $message;
@@ -44,6 +56,185 @@ function add_error(array &$errors, string $message): void
 function cell_key(int $x, int $y): string
 {
     return $x . ':' . $y;
+}
+function validate_card_group(
+    array $cardsBlock,
+    string $jsonKey,
+    string $expectedType,
+    int $maxCount,
+    array &$errors,
+    array &$warnings
+): array {
+    $cards = $cardsBlock[$jsonKey] ?? null;
+    $ids = [];
+
+    if (!is_array($cards)) {
+        add_error($errors, "cards.$jsonKey должен быть массивом");
+        return $ids;
+    }
+
+    if (count($cards) === 0) {
+        add_error($errors, "cards.$jsonKey не должен быть пустым");
+        return $ids;
+    }
+
+    if (count($cards) > $maxCount) {
+        add_error($errors, "cards.$jsonKey содержит слишком много карточек: " . count($cards) . " из $maxCount");
+    }
+
+    foreach ($cards as $index => $card) {
+        if (!is_array($card)) {
+            add_error($errors, "cards.$jsonKey[$index] должен быть объектом");
+            continue;
+        }
+
+        $id = trim((string) ($card['id'] ?? ''));
+        $type = trim((string) ($card['type'] ?? $expectedType));
+        $title = trim((string) ($card['title'] ?? ''));
+        $legacyName = trim((string) ($card['legacy_name'] ?? $title));
+
+        if ($id === '') {
+            add_error($errors, "cards.$jsonKey[$index].id не указан");
+            continue;
+        }
+
+        if (!preg_match('/^[a-z0-9_]+$/', $id)) {
+            add_error($errors, "cards.$jsonKey[$index].id `$id` должен содержать только латинские буквы, цифры и подчёркивания");
+        }
+
+        if (isset($ids[$id])) {
+            add_error($errors, "Дублирующийся card id `$id` в cards.$jsonKey");
+            continue;
+        }
+
+        $ids[$id] = [
+            'id' => $id,
+            'type' => $type,
+            'title' => $title,
+            'legacy_name' => $legacyName,
+            'index' => $index,
+        ];
+
+        if ($type !== $expectedType) {
+            add_error($errors, "cards.$jsonKey[$index].type должен быть `$expectedType`, сейчас `$type`");
+        }
+
+        if ($title === '') {
+            add_error($errors, "cards.$jsonKey[$index].title не указан");
+        }
+
+        if ($legacyName === '') {
+            add_error($errors, "cards.$jsonKey[$index].legacy_name не указан");
+        }
+
+        if (array_key_exists('image', $card) && $card['image'] !== null && !is_string($card['image'])) {
+            add_error($errors, "cards.$jsonKey[$index].image должен быть строкой или null");
+        }
+
+        if ($expectedType === 'suspect') {
+            $color = $card['color'] ?? null;
+
+            if ($color === null || trim((string) $color) === '') {
+                $warnings[] = "cards.$jsonKey[$index] `$id`: не указан color";
+            } elseif (!preg_match('/^#[0-9a-fA-F]{6}$/', (string) $color)) {
+                add_error($errors, "cards.$jsonKey[$index].color должен быть HEX-цветом вида #d62828");
+            }
+        }
+
+        if ($expectedType === 'room') {
+            $roomKey = trim((string) ($card['room_key'] ?? $legacyName));
+
+            if ($roomKey === '') {
+                add_error($errors, "cards.$jsonKey[$index].room_key не указан");
+            }
+
+            $ids[$id]['room_key'] = $roomKey;
+        }
+    }
+
+    return $ids;
+}
+
+function validate_cards_block(
+    array $map,
+    array $cardLimits,
+    array &$errors,
+    array &$warnings
+): array {
+    $cardsBlock = $map['cards'] ?? null;
+
+    if ($cardsBlock === null) {
+        return [
+            'has_cards' => false,
+            'suspects' => [],
+            'weapons' => [],
+            'rooms' => [],
+            'all_ids' => [],
+        ];
+    }
+
+    if (!is_array($cardsBlock)) {
+        add_error($errors, 'cards должен быть объектом с группами suspects, weapons, rooms');
+
+        return [
+            'has_cards' => true,
+            'suspects' => [],
+            'weapons' => [],
+            'rooms' => [],
+            'all_ids' => [],
+        ];
+    }
+
+    $suspects = validate_card_group(
+        $cardsBlock,
+        'suspects',
+        'suspect',
+        (int) $cardLimits['suspects'],
+        $errors,
+        $warnings
+    );
+
+    $weapons = validate_card_group(
+        $cardsBlock,
+        'weapons',
+        'weapon',
+        (int) $cardLimits['weapons'],
+        $errors,
+        $warnings
+    );
+
+    $rooms = validate_card_group(
+        $cardsBlock,
+        'rooms',
+        'room',
+        (int) $cardLimits['rooms'],
+        $errors,
+        $warnings
+    );
+
+    $allIds = [];
+
+    foreach ([
+        'suspects' => $suspects,
+        'weapons' => $weapons,
+        'rooms' => $rooms,
+    ] as $group => $items) {
+        foreach ($items as $id => $card) {
+            if (isset($allIds[$id])) {
+                add_error($errors, "card id `$id` повторяется в разных группах cards");
+            }
+
+            $allIds[$id] = $group;
+        }
+    }
+
+    return [
+        'has_cards' => true,
+        'suspects' => $suspects,
+        'weapons' => $weapons,
+        'rooms' => $rooms,
+        'all_ids' => $allIds,
+    ];
 }
 function map_character_starts_for_validation(
     array $map,
@@ -59,27 +250,76 @@ function map_character_starts_for_validation(
     }
 
     if (!is_array($map['starts'])) {
-        add_error($errors, 'starts должен быть объектом вида "Имя персонажа": [x,y]');
+        add_error($errors, 'starts должен быть объектом вида "card_id или имя персонажа": [x,y]');
         return array_values($starts);
     }
 
-    foreach ($map['starts'] as $name => $point) {
+    $suspectCards = [];
+
+    if (isset($map['cards']) && is_array($map['cards']) && isset($map['cards']['suspects']) && is_array($map['cards']['suspects'])) {
+        foreach ($map['cards']['suspects'] as $card) {
+            if (!is_array($card)) {
+                continue;
+            }
+
+            $id = trim((string) ($card['id'] ?? ''));
+            $name = trim((string) ($card['legacy_name'] ?? $card['title'] ?? ''));
+
+            if ($id !== '' && $name !== '') {
+                $suspectCards[$id] = $name;
+            }
+        }
+    }
+
+    /**
+     * Если в карте нет cards.suspects, используем старые имена.
+     * Это fallback для карт, которые ещё не переехали на cards в JSON.
+     */
+    if (!$suspectCards) {
+        foreach ($defaultCharacterStarts as $name => $point) {
+            $suspectCards[$name] = $name;
+        }
+    }
+
+    $knownStartKeys = [];
+
+    foreach ($suspectCards as $startKey => $name) {
+        $knownStartKeys[$startKey] = true;
+
         if (!isset($defaultCharacterStarts[$name])) {
-            $warnings[] = "starts содержит неизвестного персонажа `$name`";
+            $warnings[] = "cards.suspects содержит персонажа `$name`, которого нет в стандартных персонажах";
             continue;
         }
 
+        $point = $map['starts'][$startKey] ?? null;
+
+        /**
+         * Fallback на старый формат:
+         * starts по имени персонажа.
+         */
+        if (!is_array($point)) {
+            $point = $map['starts'][$name] ?? null;
+
+            if (is_array($point)) {
+                $knownStartKeys[$name] = true;
+            }
+        }
+
         if (!is_array($point) || count($point) < 2) {
-            add_error($errors, "starts.`$name` должен быть массивом [x,y]");
+            $warnings[] = "В starts не указан персонаж `$name`. Используется fallback.";
             continue;
         }
 
         $starts[$name] = [(int) $point[0], (int) $point[1]];
     }
 
-    foreach ($defaultCharacterStarts as $name => $fallback) {
-        if (!isset($map['starts'][$name])) {
-            $warnings[] = "В starts не указан персонаж `$name`. Используется fallback.";
+    foreach ($map['starts'] as $key => $point) {
+        if (!isset($knownStartKeys[$key])) {
+            $warnings[] = "starts содержит неизвестный ключ `$key`";
+        }
+
+        if (!is_array($point) || count($point) < 2) {
+            add_error($errors, "starts.`$key` должен быть массивом [x,y]");
         }
     }
 
@@ -436,6 +676,9 @@ function map_statistics(
         'secrets' => $secrets,
         'starts' => count($characterStarts),
         'has_explicit_paths' => isset($map['paths']) && is_array($map['paths']),
+        'cards_suspects' => count($cardsValidation['suspects'] ?? []),
+        'cards_weapons' => count($cardsValidation['weapons'] ?? []),
+        'cards_rooms' => count($cardsValidation['rooms'] ?? []),
     ];
 }
 function point_in_room(int $x, int $y, array $room): bool
@@ -472,7 +715,8 @@ function validate_map_file(
     string $file,
     string $mapsDir,
     array $requiredRooms,
-    array $defaultCharacterStarts
+    array $defaultCharacterStarts,
+    array $cardLimits
 ): array {
     $errors = [];
     $warnings = [];
@@ -500,6 +744,7 @@ function validate_map_file(
 
     $id = trim((string) ($data['id'] ?? ''));
     $title = (string) ($data['title'] ?? $id ?: $baseName);
+    $cardsValidation = validate_cards_block($data, $cardLimits, $errors, $warnings);
     $characterStarts = map_character_starts_for_validation(
         $data,
         $defaultCharacterStarts,
@@ -541,6 +786,38 @@ function validate_map_file(
         $rooms = [];
     }
 
+    $hasCardsBlock = (bool) ($cardsValidation['has_cards'] ?? false);
+    $roomCardIds = $cardsValidation['rooms'] ?? [];
+
+    // if ($hasCardsBlock) {
+    //     $cardRooms = $data['cards']['rooms'] ?? [];
+
+    //     if (!is_array($cardRooms) || !$cardRooms) {
+    //         add_error($errors, 'cards.rooms должен содержать список карточек комнат');
+    //     } else {
+    //         foreach ($cardRooms as $cardIndex => $card) {
+    //             if (!is_array($card)) {
+    //                 add_error($errors, "cards.rooms[$cardIndex] должен быть объектом");
+    //                 continue;
+    //             }
+
+    //             $cardId = trim((string) ($card['id'] ?? ''));
+
+    //             if ($cardId === '') {
+    //                 add_error($errors, "cards.rooms[$cardIndex].id не указан");
+    //                 continue;
+    //             }
+
+    //             if (isset($roomCardIds[$cardId])) {
+    //                 add_error($errors, "Дублирующийся id карточки комнаты `$cardId`");
+    //                 continue;
+    //             }
+
+    //             $roomCardIds[$cardId] = true;
+    //         }
+    //     }
+    // }
+
     foreach ($requiredRooms as $roomName) {
         if (!isset($rooms[$roomName])) {
             add_error($errors, "Отсутствует обязательная комната: `$roomName`");
@@ -551,6 +828,15 @@ function validate_map_file(
         if (!is_array($room)) {
             add_error($errors, "Комната `$roomName`: описание должно быть объектом");
             continue;
+        }
+        if ($hasCardsBlock) {
+            $roomCardId = trim((string) ($room['card_id'] ?? ''));
+
+            if ($roomCardId === '') {
+                add_error($errors, "Комната `$roomName`: не указан card_id");
+            } elseif (!isset($roomCardIds[$roomCardId])) {
+                add_error($errors, "Комната `$roomName`: card_id `$roomCardId` не найден в cards.rooms");
+            }
         }
 
         foreach (['x1', 'y1', 'x2', 'y2'] as $key) {
@@ -611,15 +897,15 @@ function validate_map_file(
                 is_array($rooms[$aName]) &&
                 is_array($rooms[$bName]) &&
                 isset(
-                    $rooms[$aName]['x1'],
-                    $rooms[$aName]['y1'],
-                    $rooms[$aName]['x2'],
-                    $rooms[$aName]['y2'],
-                    $rooms[$bName]['x1'],
-                    $rooms[$bName]['y1'],
-                    $rooms[$bName]['x2'],
-                    $rooms[$bName]['y2']
-                ) &&
+                $rooms[$aName]['x1'],
+                $rooms[$aName]['y1'],
+                $rooms[$aName]['x2'],
+                $rooms[$aName]['y2'],
+                $rooms[$bName]['x1'],
+                $rooms[$bName]['y1'],
+                $rooms[$bName]['x2'],
+                $rooms[$bName]['y2']
+            ) &&
                 rooms_overlap($rooms[$aName], $rooms[$bName])
             ) {
                 add_error($errors, "Комнаты `$aName` и `$bName` пересекаются");
@@ -741,7 +1027,8 @@ if (!$isCli) {
 $hasErrors = false;
 
 foreach ($files as $file) {
-    $result = validate_map_file($file, $mapsDir, $requiredRooms, $defaultCharacterStarts);    $name = basename($file);
+    $result = validate_map_file($file, $mapsDir, $requiredRooms, $defaultCharacterStarts, $cardLimits);
+    $name = basename($file);
 
     if ($result['errors']) {
         $hasErrors = true;

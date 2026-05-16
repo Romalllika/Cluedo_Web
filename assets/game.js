@@ -764,9 +764,9 @@ function renderCards() {
 
   $('#myCards').innerHTML =
     `<h3>Мои карты</h3>
-     <label class="card-image-toggle">
-     <input type="checkbox" id="toggleCardImages" ${showImages ? 'checked' : ''}>
-     Показывать изображения карточек
+    <label class="card-image-toggle">
+      <input type="checkbox" id="toggleCardImages" ${showImages ? 'checked' : ''}>
+      <span>Картинки карточек</span>
     </label>` +
     state.myCards.map(c => {
       const label = escapeHtml(c.title || c.card_name);

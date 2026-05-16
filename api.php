@@ -124,7 +124,7 @@ function character_positions(int $gid): array
 
     $colors = [];
 
-    foreach (characters() as $c) {
+    foreach (characters_for_game($gid) as $c) {
         $colors[$c['name']] = $c['color'];
     }
 
@@ -158,22 +158,22 @@ function matching_cards_for_user(
     return $q->fetchAll();
 }
 
-function suggestion_card_ids(string $suspect, string $weapon, string $room): array
+function suggestion_card_ids(int $gid, string $suspect, string $weapon, string $room): array
 {
     return [
-        'suspect' => legacy_card_name_to_id('suspect', $suspect),
-        'weapon' => legacy_card_name_to_id('weapon', $weapon),
-        'room' => legacy_card_name_to_id('room', $room),
+        'suspect' => map_legacy_card_name_to_id($gid, 'suspect', $suspect),
+        'weapon' => map_legacy_card_name_to_id($gid, 'weapon', $weapon),
+        'room' => map_legacy_card_name_to_id($gid, 'room', $room),
     ];
 }
 
-function resolve_card_input(string $type, ?string $id, ?string $legacyName): array
+function resolve_card_input(int $gid, string $type, ?string $id, ?string $legacyName): array
 {
     $id = trim((string) $id);
     $legacyName = trim((string) $legacyName);
 
     if ($id !== '') {
-        $card = card_by_id($id);
+        $card = map_card_by_id($gid, $id);
 
         if ($card && $card['type'] === $type) {
             return [
@@ -185,10 +185,10 @@ function resolve_card_input(string $type, ?string $id, ?string $legacyName): arr
     }
 
     if ($legacyName !== '') {
-        $resolvedId = legacy_card_name_to_id($type, $legacyName);
+        $resolvedId = map_legacy_card_name_to_id($gid, $type, $legacyName);
 
         if ($resolvedId) {
-            $card = card_by_id($resolvedId);
+            $card = map_card_by_id($gid, $resolvedId);
 
             if ($card) {
                 return [
@@ -223,7 +223,7 @@ function auto_show_card_from_eliminated_player(
 
     $card = $cards[0];
 
-    $ids = suggestion_card_ids($suspect, $weapon, $room);
+    $ids = suggestion_card_ids($gid, $suspect, $weapon, $room);
 
     db()->prepare(
         "UPDATE games
@@ -287,8 +287,8 @@ if ($a === 'state') {
 
     $myCards = $cards->fetchAll();
 
-    $myCards = array_map(function ($card) {
-        $meta = !empty($card['card_id']) ? card_by_id((string) $card['card_id']) : null;
+    $myCards = array_map(function ($card) use ($gid) {
+        $meta = !empty($card['card_id']) ? map_card_by_id($gid, (string) $card['card_id']) : null;
 
         $card['title'] = $meta['title'] ?? $card['card_name'];
         $card['image'] = $meta['image'] ?? null;
@@ -398,14 +398,14 @@ if ($a === 'state') {
         'afkTurnSeconds' => AFK_TURN_SECONDS,
         'afkDisproveSeconds' => AFK_DISPROVE_SECONDS,
         'solution' => $solution,
-        'suspects' => suspects(),
-        'weapons' => weapons(),
-        'roomNames' => rooms(),
+        'suspects' => map_legacy_card_titles_by_type($gid, 'suspect'),
+        'weapons' => map_legacy_card_titles_by_type($gid, 'weapon'),
+        'roomNames' => map_legacy_card_titles_by_type($gid, 'room'),
 
-        'cardsMeta' => cards(),
-        'suspectCards' => suspect_cards(),
-        'weaponCards' => weapon_cards(),
-        'roomCards' => room_cards(),
+        'cardsMeta' => map_cards($gid),
+        'suspectCards' => map_suspect_cards($gid),
+        'weaponCards' => map_weapon_cards($gid),
+        'roomCards' => map_room_cards($gid),
 
         'availableMaps' => available_maps(),
         'characters' => characters_for_game($gid)
@@ -439,9 +439,9 @@ if ($a === 'start') {
 
     $firstUid = (int) $ps[0]['user_id'];
 
-    $suspectCards = suspect_cards();
-    $weaponCards = weapon_cards();
-    $roomCards = room_cards();
+    $suspectCards = map_suspect_cards($gid);
+    $weaponCards = map_weapon_cards($gid);
+    $roomCards = map_room_cards($gid);
 
     $solutionSuspect = $suspectCards[array_rand($suspectCards)];
     $solutionWeapon = $weaponCards[array_rand($weaponCards)];
@@ -727,12 +727,14 @@ if ($a === 'suggest') {
     }
 
     $suspectInput = resolve_card_input(
+        $gid,
         'suspect',
         $_POST['suspect_id'] ?? null,
         $_POST['suspect'] ?? null
     );
 
     $weaponInput = resolve_card_input(
+        $gid,
         'weapon',
         $_POST['weapon_id'] ?? null,
         $_POST['weapon'] ?? null
@@ -741,7 +743,10 @@ if ($a === 'suggest') {
     $sus = $suspectInput['name'];
     $weap = $weaponInput['name'];
 
-    if (!in_array($sus, suspects(), true) || !in_array($weap, weapons(), true)) {
+    if (
+        !in_array($sus, map_legacy_card_titles_by_type($gid, 'suspect'), true) ||
+        !in_array($weap, map_legacy_card_titles_by_type($gid, 'weapon'), true)
+    ) {
         json_out(['error' => 'Неверные карты']);
     }
     if ($sus === $p['character_name']) {
@@ -751,7 +756,7 @@ if ($a === 'suggest') {
     $cardIds = [
         'suspect' => $suspectInput['id'],
         'weapon' => $weaponInput['id'],
-        'room' => legacy_card_name_to_id('room', $room),
+        'room' => map_legacy_card_name_to_id($gid, 'room', $room),
     ];
 
     $center = room_positions($gid)[$room];
@@ -965,18 +970,21 @@ if ($a === 'accuse') {
     }
 
     $suspectInput = resolve_card_input(
+        $gid,
         'suspect',
         $_POST['suspect_id'] ?? null,
         $_POST['suspect'] ?? null
     );
 
     $weaponInput = resolve_card_input(
+        $gid,
         'weapon',
         $_POST['weapon_id'] ?? null,
         $_POST['weapon'] ?? null
     );
 
     $roomInput = resolve_card_input(
+        $gid,
         'room',
         $_POST['room_id'] ?? null,
         $_POST['room'] ?? null
@@ -986,7 +994,11 @@ if ($a === 'accuse') {
     $weap = $weaponInput['name'];
     $room = $roomInput['name'];
 
-    if (!in_array($sus, suspects(), true) || !in_array($weap, weapons(), true) || !in_array($room, rooms(), true)) {
+    if (
+        !in_array($sus, map_legacy_card_titles_by_type($gid, 'suspect'), true) ||
+        !in_array($weap, map_legacy_card_titles_by_type($gid, 'weapon'), true) ||
+        !in_array($room, map_legacy_card_titles_by_type($gid, 'room'), true)
+    ) {
         json_out(['error' => 'Некорректное обвинение']);
     }
 

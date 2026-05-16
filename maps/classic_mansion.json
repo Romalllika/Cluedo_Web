@@ -7,6 +7,176 @@
     "w": 17,
     "h": 17
   },
+  "cards": {
+    "suspects": [
+        {
+        "id": "suspect_alex_gromov",
+        "type": "suspect",
+        "title": "Алекс Громов",
+        "legacy_name": "Алекс Громов",
+        "image": null,
+        "color": "#d62828"
+        },
+        {
+        "id": "suspect_maria_scarlet",
+        "type": "suspect",
+        "title": "Мария Скарлет",
+        "legacy_name": "Мария Скарлет",
+        "image": null,
+        "color": "#c1121f"
+        },
+        {
+        "id": "suspect_professor_violet",
+        "type": "suspect",
+        "title": "Профессор Фиолетов",
+        "legacy_name": "Профессор Фиолетов",
+        "image": null,
+        "color": "#7209b7"
+        },
+        {
+        "id": "suspect_viktor_olive",
+        "type": "suspect",
+        "title": "Виктор Олив",
+        "legacy_name": "Виктор Олив",
+        "image": null,
+        "color": "#6a994e"
+        },
+        {
+        "id": "suspect_elena_white",
+        "type": "suspect",
+        "title": "Елена Белая",
+        "legacy_name": "Елена Белая",
+        "image": null,
+        "color": "#f8f9fa"
+        },
+        {
+        "id": "suspect_sofia_blue",
+        "type": "suspect",
+        "title": "София Синяя",
+        "legacy_name": "София Синяя",
+        "image": null,
+        "color": "#277da1"
+        }
+    ],
+    "weapons": [
+        {
+        "id": "weapon_knife",
+        "type": "weapon",
+        "title": "Кинжал",
+        "legacy_name": "Кинжал",
+        "image": null
+        },
+        {
+        "id": "weapon_revolver",
+        "type": "weapon",
+        "title": "Револьвер",
+        "legacy_name": "Револьвер",
+        "image": null
+        },
+        {
+        "id": "weapon_rope",
+        "type": "weapon",
+        "title": "Верёвка",
+        "legacy_name": "Верёвка",
+        "image": null
+        },
+        {
+        "id": "weapon_candlestick",
+        "type": "weapon",
+        "title": "Подсвечник",
+        "legacy_name": "Подсвечник",
+        "image": null
+        },
+        {
+        "id": "weapon_wrench",
+        "type": "weapon",
+        "title": "Гаечный ключ",
+        "legacy_name": "Гаечный ключ",
+        "image": null
+        },
+        {
+        "id": "weapon_pipe",
+        "type": "weapon",
+        "title": "Труба",
+        "legacy_name": "Труба",
+        "image": null
+        }
+    ],
+    "rooms": [
+        {
+        "id": "room_kitchen",
+        "type": "room",
+        "title": "Кухня",
+        "legacy_name": "Кухня",
+        "image": null,
+        "room_key": "Кухня"
+        },
+        {
+        "id": "room_ballroom",
+        "type": "room",
+        "title": "Бальный зал",
+        "legacy_name": "Бальный зал",
+        "image": null,
+        "room_key": "Бальный зал"
+        },
+        {
+        "id": "room_greenhouse",
+        "type": "room",
+        "title": "Оранжерея",
+        "legacy_name": "Оранжерея",
+        "image": null,
+        "room_key": "Оранжерея"
+        },
+        {
+        "id": "room_dining",
+        "type": "room",
+        "title": "Столовая",
+        "legacy_name": "Столовая",
+        "image": null,
+        "room_key": "Столовая"
+        },
+        {
+        "id": "room_billiard",
+        "type": "room",
+        "title": "Бильярдная",
+        "legacy_name": "Бильярдная",
+        "image": null,
+        "room_key": "Бильярдная"
+        },
+        {
+        "id": "room_library",
+        "type": "room",
+        "title": "Библиотека",
+        "legacy_name": "Библиотека",
+        "image": null,
+        "room_key": "Библиотека"
+        },
+        {
+        "id": "room_lounge",
+        "type": "room",
+        "title": "Гостиная",
+        "legacy_name": "Гостиная",
+        "image": null,
+        "room_key": "Гостиная"
+        },
+        {
+        "id": "room_hall",
+        "type": "room",
+        "title": "Холл",
+        "legacy_name": "Холл",
+        "image": null,
+        "room_key": "Холл"
+        },
+        {
+        "id": "room_study",
+        "type": "room",
+        "title": "Кабинет",
+        "legacy_name": "Кабинет",
+        "image": null,
+        "room_key": "Кабинет"
+        }
+    ]
+    },
     "paths": [
     [5,4],[6,4],[7,4],[8,4],[9,4],[10,4],[11,4],
     [5,5],[6,5],[7,5],[8,5],[9,5],[10,5],[11,5],
@@ -20,15 +190,16 @@
     [5,13],[6,13],[7,13],[8,13],[9,13],[10,13],[11,13]
   ],
   "starts": {
-    "Алекс Громов": [8, 9],
-    "Мария Скарлет": [7, 9],
-    "Профессор Фиолетов": [9, 9],
-    "Виктор Олив": [8, 8],
-    "Елена Белая": [7, 8],
-    "София Синяя": [9, 8]
+    "suspect_alex_gromov": [8, 9],
+    "suspect_maria_scarlet": [7, 9],
+    "suspect_professor_violet": [9, 9],
+    "suspect_viktor_olive": [8, 8],
+    "suspect_elena_white": [7, 8],
+    "suspect_sofia_blue": [9, 8]
     },
   "rooms": {
     "Кухня": {
+      "card_id": "room_kitchen",
       "x1": 0,
       "y1": 0,
       "x2": 4,
@@ -38,6 +209,7 @@
       "theme": "kitchen"
     },
     "Бальный зал": {
+      "card_id": "room_ballroom",
       "x1": 5,
       "y1": 0,
       "x2": 11,
@@ -47,6 +219,7 @@
       "theme": "ballroom"
     },
     "Оранжерея": {
+      "card_id": "room_greenhouse",
       "x1": 12,
       "y1": 0,
       "x2": 16,
@@ -56,6 +229,7 @@
       "theme": "greenhouse"
     },
     "Столовая": {
+      "card_id": "room_dining",
       "x1": 0,
       "y1": 5,
       "x2": 4,
@@ -65,6 +239,7 @@
       "theme": "dining"
     },
     "Бильярдная": {
+      "card_id": "room_billiard",
       "x1": 12,
       "y1": 5,
       "x2": 16,
@@ -74,6 +249,7 @@
       "theme": "billiard"
     },
     "Библиотека": {
+      "card_id": "room_library",
       "x1": 0,
       "y1": 10,
       "x2": 4,
@@ -83,6 +259,7 @@
       "theme": "library"
     },
     "Гостиная": {
+      "card_id": "room_lounge",
       "x1": 0,
       "y1": 13,
       "x2": 4,
@@ -92,6 +269,7 @@
       "theme": "lounge"
     },
     "Холл": {
+      "card_id": "room_hall",
       "x1": 5,
       "y1": 14,
       "x2": 11,
@@ -101,6 +279,7 @@
       "theme": "hall"
     },
     "Кабинет": {
+      "card_id": "room_study",
       "x1": 12,
       "y1": 10,
       "x2": 16,

@@ -13,23 +13,47 @@ function default_character_starts(): array
 
 function character_starts_from_config(array $map): array
 {
-    $starts = default_character_starts();
+    $defaultStarts = default_character_starts();
 
     if (!isset($map['starts']) || !is_array($map['starts'])) {
-        return $starts;
+        return $defaultStarts;
     }
 
-    foreach ($starts as $name => $fallback) {
-        $point = $map['starts'][$name] ?? null;
+    $starts = [];
+    $suspectCards = map_suspect_cards_from_config($map);
+
+    foreach ($suspectCards as $card) {
+        $cardId = (string) ($card['id'] ?? '');
+        $name = (string) ($card['legacy_name'] ?? $card['title'] ?? '');
+
+        if ($name === '') {
+            continue;
+        }
+
+        $fallback = $defaultStarts[$name] ?? [0, 0];
+
+        /**
+         * Новый формат:
+         * starts по card_id.
+         */
+        $point = $cardId !== '' ? ($map['starts'][$cardId] ?? null) : null;
+
+        /**
+         * Старый fallback:
+         * starts по имени персонажа.
+         */
+        if (!is_array($point)) {
+            $point = $map['starts'][$name] ?? null;
+        }
 
         if (!is_array($point) || count($point) < 2) {
-            continue;
+            $point = $fallback;
         }
 
         $starts[$name] = [(int) $point[0], (int) $point[1]];
     }
 
-    return $starts;
+    return $starts ?: $defaultStarts;
 }
 
 function map_character_starts(int $gid = 0): array
@@ -41,25 +65,45 @@ function map_character_starts(int $gid = 0): array
 
 function characters_for_game(int $gid = 0): array
 {
-    $starts = map_character_starts($gid);
-    $characters = characters();
+    $map = load_map_config($gid);
+    $starts = character_starts_from_config($map);
+    $suspectCards = map_suspect_cards($gid);
 
-    foreach ($characters as &$character) {
-        $name = $character['name'];
+    $legacyCharacters = [];
 
-        if (!isset($starts[$name])) {
+    foreach (characters() as $character) {
+        $legacyCharacters[$character['name']] = $character;
+    }
+
+    $characters = [];
+
+    foreach ($suspectCards as $card) {
+        $name = (string) ($card['legacy_name'] ?? $card['title'] ?? '');
+
+        if ($name === '') {
             continue;
         }
 
-        [$x, $y] = $starts[$name];
+        $fallback = $legacyCharacters[$name] ?? [];
 
-        $character['x'] = (int) $x;
-        $character['y'] = (int) $y;
+        $point = $starts[$name] ?? [
+            (int) ($fallback['x'] ?? 0),
+            (int) ($fallback['y'] ?? 0),
+        ];
+
+        $characters[] = [
+            'id' => (string) ($card['id'] ?? ''),
+            'card_id' => (string) ($card['id'] ?? ''),
+            'name' => $name,
+            'title' => (string) ($card['title'] ?? $name),
+            'color' => (string) ($card['color'] ?? ($fallback['color'] ?? '#f5c542')),
+            'image' => $card['image'] ?? null,
+            'x' => (int) $point[0],
+            'y' => (int) $point[1],
+        ];
     }
 
-    unset($character);
-
-    return $characters;
+    return $characters ?: characters();
 }
 
 function available_maps(): array
@@ -69,24 +113,6 @@ function available_maps(): array
             'id' => 'classic_mansion',
             'title' => 'Классический особняк',
             'description' => 'Стабильная рабочая карта особняка.'
-        ],
-
-        'mansion_shifted_doors' => [
-            'id' => 'mansion_shifted_doors',
-            'title' => 'Особняк: другие двери',
-            'description' => 'Та же карта особняка, но с немного изменёнными дверями комнат.'
-        ],
-
-        'mansion_evening' => [
-            'id' => 'mansion_evening',
-            'title' => 'Особняк: вечерняя схема',
-            'description' => 'Альтернативная схема особняка с другими входами в часть комнат.'
-        ],
-
-        'mansion_crossroads' => [
-            'id' => 'mansion_crossroads',
-            'title' => 'Особняк: перекрёстки',
-            'description' => 'Карта с более узкой сетью коридоров и несколькими центральными перекрёстками.'
         ],
     ];
 }
@@ -123,9 +149,9 @@ function map_id_for_game(int $gid = 0): string
     return $cache[$gid];
 }
 
-function load_map_config(int $gid = 0): array
+function load_map_config_by_id(string $mapId): array
 {
-    $mapId = map_id_for_game($gid);
+    $mapId = normalize_map_id($mapId);
 
     static $cache = [];
 
@@ -137,6 +163,7 @@ function load_map_config(int $gid = 0): array
 
     if (!is_file($path)) {
         $path = __DIR__ . '/../maps/classic_mansion.json';
+        $mapId = 'classic_mansion';
     }
 
     $json = file_get_contents($path);
@@ -149,6 +176,11 @@ function load_map_config(int $gid = 0): array
     $cache[$mapId] = $data;
 
     return $cache[$mapId];
+}
+
+function load_map_config(int $gid = 0): array
+{
+    return load_map_config_by_id(map_id_for_game($gid));
 }
 
 function board_variant(int $gid = 0): int
@@ -190,10 +222,135 @@ function mansion_rooms(int $gid = 0): array
             'door' => [(int) $door[0], (int) $door[1]],
             'secret' => $room['secret'] ?? null,
             'theme' => $room['theme'] ?? 'default',
+            'card_id' => $room['card_id'] ?? null,
         ];
 
         $out[$name]['doors'] = [$out[$name]['door']];
     }
 
     return $out;
+}
+
+
+function normalize_map_card(array $card, string $type): array
+{
+    $id = trim((string) ($card['id'] ?? ''));
+    $title = trim((string) ($card['title'] ?? ''));
+    $legacyName = trim((string) ($card['legacy_name'] ?? $title));
+
+    return [
+        'id' => $id,
+        'type' => $type,
+        'title' => $title !== '' ? $title : $legacyName,
+        'legacy_name' => $legacyName !== '' ? $legacyName : $title,
+        'image' => $card['image'] ?? null,
+        'color' => $card['color'] ?? null,
+        'room_key' => $card['room_key'] ?? null,
+    ];
+}
+
+function map_cards_from_config(array $map): array
+{
+    $cardsBlock = $map['cards'] ?? null;
+
+    if (!is_array($cardsBlock)) {
+        return cards();
+    }
+
+    $out = [];
+
+    $groups = [
+        'suspects' => 'suspect',
+        'weapons' => 'weapon',
+        'rooms' => 'room',
+    ];
+
+    foreach ($groups as $jsonKey => $type) {
+        $items = $cardsBlock[$jsonKey] ?? [];
+
+        if (!is_array($items)) {
+            continue;
+        }
+
+        foreach ($items as $card) {
+            if (!is_array($card)) {
+                continue;
+            }
+
+            $normalized = normalize_map_card($card, $type);
+
+            if ($normalized['id'] === '' || $normalized['title'] === '') {
+                continue;
+            }
+
+            $out[] = $normalized;
+        }
+    }
+
+    return $out ?: cards();
+}
+
+function map_suspect_cards_from_config(array $map): array
+{
+    return array_values(array_filter(
+        map_cards_from_config($map),
+        fn(array $card) => $card['type'] === 'suspect'
+    ));
+}
+
+function map_cards(int $gid = 0): array
+{
+    return map_cards_from_config(load_map_config($gid));
+}
+function map_cards_by_type(int $gid, string $type): array
+{
+    return array_values(array_filter(
+        map_cards($gid),
+        fn(array $card) => $card['type'] === $type
+    ));
+}
+
+function map_suspect_cards(int $gid = 0): array
+{
+    return map_cards_by_type($gid, 'suspect');
+}
+
+function map_weapon_cards(int $gid = 0): array
+{
+    return map_cards_by_type($gid, 'weapon');
+}
+
+function map_room_cards(int $gid = 0): array
+{
+    return map_cards_by_type($gid, 'room');
+}
+
+function map_card_by_id(int $gid, string $id): ?array
+{
+    foreach (map_cards($gid) as $card) {
+        if ($card['id'] === $id) {
+            return $card;
+        }
+    }
+
+    return null;
+}
+
+function map_legacy_card_name_to_id(int $gid, string $type, string $name): ?string
+{
+    foreach (map_cards_by_type($gid, $type) as $card) {
+        if ($card['legacy_name'] === $name || $card['title'] === $name) {
+            return (string) $card['id'];
+        }
+    }
+
+    return null;
+}
+
+function map_legacy_card_titles_by_type(int $gid, string $type): array
+{
+    return array_map(
+        fn(array $card) => (string) $card['legacy_name'],
+        map_cards_by_type($gid, $type)
+    );
 }

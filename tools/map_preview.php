@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/config.php';
+
+require_auth();
+
 require_once __DIR__ . '/../includes/data.php';
 require_once __DIR__ . '/../includes/maps.php';
 require_once __DIR__ . '/../includes/movement.php';
@@ -98,8 +101,12 @@ function preview_starts(array $startsByName): array
     $starts = [];
     $colors = [];
 
-    foreach (characters() as $character) {
-        $colors[$character['name']] = (string) $character['color'];
+    foreach (map_suspect_cards_from_config(load_map_config_by_id($_GET['map'] ?? 'classic_mansion')) as $character) {
+        $name = (string) ($character['legacy_name'] ?? $character['title'] ?? '');
+
+        if ($name !== '') {
+            $colors[$name] = (string) ($character['color'] ?? '#f5c542');
+        }
     }
 
     foreach ($startsByName as $name => [$x, $y]) {
@@ -120,8 +127,12 @@ function preview_character_start_list(array $startsByName): array
     $starts = [];
     $colors = [];
 
-    foreach (characters() as $character) {
-        $colors[$character['name']] = (string) $character['color'];
+    foreach (map_suspect_cards_from_config(load_map_config_by_id($_GET['map'] ?? 'classic_mansion')) as $character) {
+        $name = (string) ($character['legacy_name'] ?? $character['title'] ?? '');
+
+        if ($name !== '') {
+            $colors[$name] = (string) ($character['color'] ?? '#f5c542');
+        }
     }
 
     foreach ($startsByName as $name => [$x, $y]) {
@@ -317,11 +328,18 @@ $requiredRoomsForPreview = [
 $startsByNameForPreview = character_starts_from_config($map);
 $characterStartsForPreview = array_values($startsByNameForPreview);
 
+$cardLimitsForPreview = [
+    'suspects' => 6,
+    'weapons' => 6,
+    'rooms' => 16,
+];
+
 $validationResult = validate_map_file(
     $mapFile,
     __DIR__ . '/../maps',
     $requiredRoomsForPreview,
-    default_character_starts()
+    default_character_starts(),
+    $cardLimitsForPreview
 );
 
 $validationErrors = $validationResult['errors'] ?? [];
@@ -1296,6 +1314,7 @@ foreach ($rooms as $roomName => $room) {
                 
                 <div class="actions">
                     <a class="btn" href="../lobby.php">← В лобби</a>
+                    <a class="btn" href="cards_preview.php?map=<?= e($selectedMapId) ?>">Карточки</a>
                     <a class="btn" href="validate_maps.php">Проверить карты</a>
                 </div>
                 
@@ -1316,7 +1335,10 @@ foreach ($rooms as $roomName => $room) {
                             data-room-item="<?= e((string) $roomName) ?>"
                             title="<?= isset($errorRooms[(string) $roomName]) ? e(implode(' | ', $errorRooms[(string) $roomName])) : '' ?>"
                         >
-                            <b><?= e((string) $roomName) ?></b><br>     
+                            <b><?= e((string) $roomName) ?></b><br>    
+                            <?php if (!empty($room['card_id'])): ?>
+                                <span class="muted">card_id: <?= e((string) $room['card_id']) ?></span><br>
+                            <?php endif; ?> 
                             <span class="muted">
                                 x<?= (int) $room['x1'] ?>-<?= (int) $room['x2'] ?>,
                                 y<?= (int) $room['y1'] ?>-<?= (int) $room['y2'] ?> ·

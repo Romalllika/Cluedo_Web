@@ -27,7 +27,7 @@ try {
 
     $gid = (int) $db->lastInsertId();
 
-    $chars = characters();
+    $chars = characters_for_game($gid);
     $seat = 0;
     $c = $chars[$seat];
 

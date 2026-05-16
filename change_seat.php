@@ -9,7 +9,7 @@ $uid = current_user_id();
 $gid = (int) ($_POST['game_id'] ?? $_GET['game_id'] ?? 0);
 $seat = (int) ($_POST['seat'] ?? $_GET['seat'] ?? -1);
 
-$chars = characters();
+$chars = characters_for_game($gid);
 
 if ($gid <= 0 || $seat < 0 || $seat >= count($chars)) {
     header('Location: lobby.php');
