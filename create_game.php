@@ -2,7 +2,6 @@
 
 require 'includes/config.php';
 require_auth();
-require 'includes/data.php';
 require 'includes/maps.php';
 
 $uid = current_user_id();
@@ -31,8 +30,9 @@ try {
     $seat = 0;
     $c = $chars[$seat];
 
-    $starts = map_character_starts($gid);
-    [$startX, $startY] = $starts[$c['name']] ?? [(int) $c['x'], (int) $c['y']];
+    // Позиции берутся из JSON через characters_for_game() — $c['x']/$c['y'] уже содержат их
+    $startX = (int) $c['x'];
+    $startY = (int) $c['y'];
 
     $join = $db->prepare(
         'INSERT INTO game_players

@@ -1,43 +1,9 @@
 <?php
 /**
- * Старая стабильная дорожная сетка.
- * Нужна как fallback для карт, где paths ещё не вынесены в JSON.
- */
-function default_board_paths(): array
-{
-    $paths = [];
-
-    $add = function (int $x, int $y) use (&$paths) {
-        $paths["$x:$y"] = [$x, $y];
-    };
-
-    /**
-     * Центральная зона.
-     */
-    for ($y = 4; $y <= 13; $y++) {
-        for ($x = 5; $x <= 11; $x++) {
-            $add($x, $y);
-        }
-    }
-
-    /**
-     * Стартовые позиции.
-     */
-    foreach (default_character_starts() as [$x, $y]) {
-        $add((int) $x, (int) $y);
-    }
-
-    return array_values($paths);
-}
-
-/**
  * Только эти клетки являются коридорами.
  * Всё остальное, что не комната, считается стеной/пустотой и недоступно.
- *
- * Если в JSON карты есть paths — используем их.
- * Если нет — используем старую стабильную сетку.
+ * Пути обязательно должны быть в JSON карты в блоке paths.
  */
-
 function board_paths(int $gid = 0): array
 {
     $map = load_map_config($gid);
@@ -47,26 +13,12 @@ function board_paths(int $gid = 0): array
         $paths["$x:$y"] = [$x, $y];
     };
 
-    if (isset($map['paths']) && is_array($map['paths'])) {
-        foreach ($map['paths'] as $point) {
-            if (!is_array($point) || count($point) < 2) {
-                continue;
-            }
-
-            $add((int) $point[0], (int) $point[1]);
+    foreach ($map['paths'] ?? [] as $point) {
+        if (!is_array($point) || count($point) < 2) {
+            continue;
         }
-    } else {
-        foreach (default_board_paths() as $point) {
-            $add((int) $point[0], (int) $point[1]);
-        }
-    }
 
-    /**
-     * Стартовые позиции всегда считаем доступными.
-     * Это защита от карты, где автор забыл добавить стартовые клетки в paths.
-     */
-    foreach (map_character_starts($gid) as [$x, $y]) {
-        $add((int) $x, (int) $y);
+        $add((int) $point[0], (int) $point[1]);
     }
 
     return array_values($paths);

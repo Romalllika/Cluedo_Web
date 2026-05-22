@@ -1,7 +1,6 @@
 <?php
 
 require 'includes/config.php';
-require 'includes/data.php';
 require 'includes/maps.php';
 
 require_auth();

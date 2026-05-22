@@ -1,0 +1,51 @@
+{
+  "id": "modern_villa",
+  "title": "Современная Вилла",
+  "description": "Карта современной виллы с новым расположением комнат и персонажей.",
+  "variant": 1,
+  "board": {
+    "w": 15,
+    "h": 15
+  },
+  "cards": {
+    "suspects": [
+      {"id": "suspect_diana_gray", "type": "suspect", "title": "Диана Грей", "legacy_name": "Диана Грей", "image": null, "color": "#ff5733"},
+      {"id": "suspect_ivan_black", "type": "suspect", "title": "Иван Блэк", "legacy_name": "Иван Блэк", "image": null, "color": "#33ff57"},
+      {"id": "suspect_lucas_white", "type": "suspect", "title": "Лукас Уайт", "legacy_name": "Лукас Уайт", "image": null, "color": "#3357ff"},
+      {"id": "suspect_emma_gold", "type": "suspect", "title": "Эмма Голд", "legacy_name": "Эмма Голд", "image": null, "color": "#ff33a6"}
+    ],
+    "weapons": [
+      {"id": "weapon_crowbar", "type": "weapon", "title": "Монтировка", "legacy_name": "Монтировка", "image": null},
+      {"id": "weapon_poison", "type": "weapon", "title": "Яд", "legacy_name": "Яд", "image": null},
+      {"id": "weapon_lamp", "type": "weapon", "title": "Лампа", "legacy_name": "Лампа", "image": null},
+      {"id": "weapon_sabre", "type": "weapon", "title": "Сабля", "legacy_name": "Сабля", "image": null}
+    ],
+    "rooms": [
+      {"id": "room_gym", "type": "room", "title": "Тренажерный зал", "legacy_name": "Тренажерный зал", "image": null, "room_key": "Тренажерный зал"},
+      {"id": "room_pool", "type": "room", "title": "Бассейн", "legacy_name": "Бассейн", "image": null, "room_key": "Бассейн"},
+      {"id": "room_studio", "type": "room", "title": "Студия", "legacy_name": "Студия", "image": null, "room_key": "Студия"},
+      {"id": "room_office", "type": "room", "title": "Офис", "legacy_name": "Офис", "image": null, "room_key": "Офис"},
+      {"id": "room_lounge", "type": "room", "title": "Гостиная", "legacy_name": "Гостиная", "image": null, "room_key": "Гостиная"}
+    ]
+  },
+  "paths": [
+    [4,3],[5,3],[6,3],[7,3],
+    [4,4],[5,4],[6,4],[7,4],
+    [4,5],[5,5],[6,5],[7,5],
+    [4,6],[5,6],[6,6],[7,6],
+    [4,7],[5,7],[6,7],[7,7]
+  ],
+  "starts": {
+    "suspect_diana_gray": [5,4],
+    "suspect_ivan_black": [6,4],
+    "suspect_lucas_white": [5,5],
+    "suspect_emma_gold": [6,5]
+  },
+  "rooms": {
+    "Тренажерный зал": {"card_id": "room_gym", "x1":0,"y1":0,"x2":3,"y2":3,"door":[3,3],"secret":null,"theme":"gym"},
+    "Бассейн": {"card_id": "room_pool", "x1":4,"y1":0,"x2":7,"y2":2,"door":[5,2],"secret":null,"theme":"pool"},
+    "Студия": {"card_id": "room_studio", "x1":8,"y1":0,"x2":11,"y2":3,"door":[8,3],"secret":"Офис","theme":"studio"},
+    "Офис": {"card_id": "room_office", "x1":0,"y1":4,"x2":3,"y2":7,"door":[3,5],"secret":"Студия","theme":"office"},
+    "Гостиная": {"card_id": "room_lounge", "x1":8,"y1":4,"x2":11,"y2":7,"door":[8,5],"secret":null,"theme":"lounge"}
+  }
+}

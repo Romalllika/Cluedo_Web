@@ -5,7 +5,7 @@ require_once __DIR__ . '/../includes/config.php';
 require_auth();
 
 require_once __DIR__ . '/../includes/cards.php';
-require_once __DIR__ . '/../includes/data.php';
+require_once __DIR__ . '/../includes/cards.php';
 require_once __DIR__ . '/../includes/maps.php';
 
 function e(string $value): string
@@ -273,17 +273,17 @@ $totalCards = count($groups['suspect']['cards']) + count($groups['weapon']['card
 
             <div class="summary-card">
                 <span class="muted">Персонажи</span>
-                <b><?= count($groups['suspect']['cards']) ?> / 6</b>
+                <b><?= count($groups['suspect']['cards']) ?></b>
             </div>
 
             <div class="summary-card">
                 <span class="muted">Оружие</span>
-                <b><?= count($groups['weapon']['cards']) ?> / 6</b>
+                <b><?= count($groups['weapon']['cards']) ?></b>
             </div>
 
             <div class="summary-card">
                 <span class="muted">Комнаты</span>
-                <b><?= count($groups['room']['cards']) ?> / 16</b>
+                <b><?= count($groups['room']['cards']) ?></b>
             </div>
         </div>
         <?php if (!$hasOwnCards): ?>

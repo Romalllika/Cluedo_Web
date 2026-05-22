@@ -2,7 +2,6 @@
 
 require 'includes/config.php';
 require_auth();
-require 'includes/data.php';
 require 'includes/maps.php';
 
 $uid = current_user_id();
@@ -58,8 +57,8 @@ try {
 
     $char = $chars[$seat];
 
-    $starts = map_character_starts($gid);
-    [$startX, $startY] = $starts[$char['name']] ?? [(int) $char['x'], (int) $char['y']];
+    $startX = (int) $char['x'];
+    $startY = (int) $char['y'];
 
     $db->prepare(
         'UPDATE game_players

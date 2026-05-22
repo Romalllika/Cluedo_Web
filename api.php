@@ -1,6 +1,6 @@
 <?php
 require 'includes/config.php';
-require 'includes/data.php';
+require 'includes/cards.php';
 require 'includes/maps.php';
 require 'includes/movement.php';
 require 'includes/game_lifecycle.php';

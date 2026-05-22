@@ -6,7 +6,7 @@ require_once __DIR__ . '/../includes/config.php';
 
 require_auth();
 
-require_once __DIR__ . '/../includes/data.php';
+require_once __DIR__ . '/../includes/cards.php';
 require_once __DIR__ . '/../includes/maps.php';
 require_once __DIR__ . '/../includes/movement.php';
 require_once __DIR__ . '/validate_maps.php';
@@ -23,21 +23,8 @@ function preview_cell_key(int $x, int $y): string
 
 function preview_load_map(string $mapId): array
 {
-    $mapId = normalize_map_id($mapId);
-    $path = __DIR__ . '/../maps/' . $mapId . '.json';
-
-    if (!is_file($path)) {
-        $path = __DIR__ . '/../maps/classic_mansion.json';
-    }
-
-    $json = file_get_contents($path);
-    $data = json_decode((string) $json, true);
-
-    if (!is_array($data)) {
-        throw new RuntimeException('Не удалось прочитать карту: ' . $mapId);
-    }
-
-    return $data;
+    // Делегируем в load_map_config_by_id — она бросает RuntimeException если карта не найдена.
+    return load_map_config_by_id($mapId);
 }
 
 function preview_room_at(int $x, int $y, array $rooms): ?string
@@ -66,30 +53,13 @@ function preview_room_center(array $room): array
 
 function preview_path_keys(array $map): array
 {
-    /**
-     * Если в будущем мы добавим paths в JSON карты,
-     * просмотрщик уже будет готов их использовать.
-     */
-    if (isset($map['paths']) && is_array($map['paths'])) {
-        $keys = [];
-
-        foreach ($map['paths'] as $point) {
-            if (!is_array($point) || count($point) < 2) {
-                continue;
-            }
-
-            $keys[preview_cell_key((int) $point[0], (int) $point[1])] = true;
-        }
-
-        return $keys;
-    }
-
-    /**
-     * Пока дорожная сетка берётся из текущей игровой логики.
-     */
     $keys = [];
 
-    foreach (default_board_paths() as $point) {
+    foreach ($map['paths'] ?? [] as $point) {
+        if (!is_array($point) || count($point) < 2) {
+            continue;
+        }
+
         $keys[preview_cell_key((int) $point[0], (int) $point[1])] = true;
     }
 
@@ -313,32 +283,19 @@ $map = preview_load_map($selectedMapId);
 
 $mapFile = __DIR__ . '/../maps/' . $selectedMapId . '.json';
 $relativeMapFile = 'maps/' . $selectedMapId . '.json';
-$requiredRoomsForPreview = [
-    'Кухня',
-    'Бальный зал',
-    'Оранжерея',
-    'Столовая',
-    'Бильярдная',
-    'Библиотека',
-    'Гостиная',
-    'Холл',
-    'Кабинет',
-];
-
 $startsByNameForPreview = character_starts_from_config($map);
 $characterStartsForPreview = array_values($startsByNameForPreview);
 
+// Лимиты карточек — те же что в валидаторе.
 $cardLimitsForPreview = [
-    'suspects' => 6,
-    'weapons' => 6,
-    'rooms' => 16,
+    'suspects' => 12,
+    'weapons' => 12,
+    'rooms' => 24,
 ];
 
 $validationResult = validate_map_file(
     $mapFile,
     __DIR__ . '/../maps',
-    $requiredRoomsForPreview,
-    default_character_starts(),
     $cardLimitsForPreview
 );
 

@@ -1,59 +1,35 @@
 <?php
 
-function default_character_starts(): array
-{
-    $starts = [];
-
-    foreach (characters() as $c) {
-        $starts[$c['name']] = [(int) $c['x'], (int) $c['y']];
-    }
-
-    return $starts;
-}
-
 function character_starts_from_config(array $map): array
 {
-    $defaultStarts = default_character_starts();
-
-    if (!isset($map['starts']) || !is_array($map['starts'])) {
-        return $defaultStarts;
-    }
-
     $starts = [];
     $suspectCards = map_suspect_cards_from_config($map);
 
     foreach ($suspectCards as $card) {
         $cardId = (string) ($card['id'] ?? '');
-        $name = (string) ($card['legacy_name'] ?? $card['title'] ?? '');
+        $name   = (string) ($card['legacy_name'] ?? $card['title'] ?? '');
 
         if ($name === '') {
             continue;
         }
 
-        $fallback = $defaultStarts[$name] ?? [0, 0];
-
-        /**
-         * Новый формат:
-         * starts по card_id.
-         */
+        // Новый формат: starts по card_id.
         $point = $cardId !== '' ? ($map['starts'][$cardId] ?? null) : null;
 
-        /**
-         * Старый fallback:
-         * starts по имени персонажа.
-         */
+        // Старый формат: starts по legacy-имени персонажа.
         if (!is_array($point)) {
             $point = $map['starts'][$name] ?? null;
         }
 
         if (!is_array($point) || count($point) < 2) {
-            $point = $fallback;
+            // Позиция не указана в JSON — кладём [0,0] и валидатор это поймает.
+            $point = [0, 0];
         }
 
         $starts[$name] = [(int) $point[0], (int) $point[1]];
     }
 
-    return $starts ?: $defaultStarts;
+    return $starts;
 }
 
 function map_character_starts(int $gid = 0): array
@@ -69,12 +45,6 @@ function characters_for_game(int $gid = 0): array
     $starts = character_starts_from_config($map);
     $suspectCards = map_suspect_cards($gid);
 
-    $legacyCharacters = [];
-
-    foreach (characters() as $character) {
-        $legacyCharacters[$character['name']] = $character;
-    }
-
     $characters = [];
 
     foreach ($suspectCards as $card) {
@@ -84,37 +54,60 @@ function characters_for_game(int $gid = 0): array
             continue;
         }
 
-        $fallback = $legacyCharacters[$name] ?? [];
-
-        $point = $starts[$name] ?? [
-            (int) ($fallback['x'] ?? 0),
-            (int) ($fallback['y'] ?? 0),
-        ];
+        $point = $starts[$name] ?? [0, 0];
 
         $characters[] = [
-            'id' => (string) ($card['id'] ?? ''),
+            'id'      => (string) ($card['id'] ?? ''),
             'card_id' => (string) ($card['id'] ?? ''),
-            'name' => $name,
-            'title' => (string) ($card['title'] ?? $name),
-            'color' => (string) ($card['color'] ?? ($fallback['color'] ?? '#f5c542')),
-            'image' => $card['image'] ?? null,
-            'x' => (int) $point[0],
-            'y' => (int) $point[1],
+            'name'    => $name,
+            'title'   => (string) ($card['title'] ?? $name),
+            'color'   => (string) ($card['color'] ?? '#f5c542'),
+            'image'   => $card['image'] ?? null,
+            'x'       => (int) $point[0],
+            'y'       => (int) $point[1],
         ];
     }
 
-    return $characters ?: characters();
+    return $characters;
 }
 
 function available_maps(): array
 {
-    return [
-        'classic_mansion' => [
-            'id' => 'classic_mansion',
-            'title' => 'Классический особняк',
-            'description' => 'Стабильная рабочая карта особняка.'
-        ],
-    ];
+    static $cache = null;
+
+    if ($cache !== null) {
+        return $cache;
+    }
+
+    $mapsDir = __DIR__ . '/../maps';
+    $cache = [];
+
+    foreach (glob($mapsDir . '/*.json') ?: [] as $path) {
+        $raw = @file_get_contents($path);
+        if ($raw === false) {
+            continue;
+        }
+        $data = @json_decode($raw, true);
+        if (!is_array($data)) {
+            continue;
+        }
+        $id = trim((string) ($data['id'] ?? ''));
+        if ($id === '') {
+            $id = basename($path, '.json');
+        }
+        $cache[$id] = [
+            'id'          => $id,
+            'title'       => (string) ($data['title'] ?? $id),
+            'description' => (string) ($data['description'] ?? ''),
+        ];
+    }
+
+    // Гарантируем что classic_mansion идёт первым, если он есть
+    if (isset($cache['classic_mansion'])) {
+        $cache = ['classic_mansion' => $cache['classic_mansion']] + $cache;
+    }
+
+    return $cache;
 }
 
 function normalize_map_id(?string $mapId): string
@@ -162,8 +155,7 @@ function load_map_config_by_id(string $mapId): array
     $path = __DIR__ . '/../maps/' . $mapId . '.json';
 
     if (!is_file($path)) {
-        $path = __DIR__ . '/../maps/classic_mansion.json';
-        $mapId = 'classic_mansion';
+        throw new RuntimeException('Карта не найдена: ' . $mapId);
     }
 
     $json = file_get_contents($path);
@@ -254,7 +246,8 @@ function map_cards_from_config(array $map): array
     $cardsBlock = $map['cards'] ?? null;
 
     if (!is_array($cardsBlock)) {
-        return cards();
+        // Блок cards не определён в JSON-карте.
+        return [];
     }
 
     $out = [];
@@ -287,7 +280,7 @@ function map_cards_from_config(array $map): array
         }
     }
 
-    return $out ?: cards();
+    return $out;
 }
 
 function map_suspect_cards_from_config(array $map): array

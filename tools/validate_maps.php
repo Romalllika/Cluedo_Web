@@ -21,31 +21,12 @@ if (PHP_SAPI !== 'cli') {
 $root = dirname(__DIR__);
 $mapsDir = $root . '/maps';
 
-$requiredRooms = [
-    'Кухня',
-    'Бальный зал',
-    'Оранжерея',
-    'Столовая',
-    'Бильярдная',
-    'Библиотека',
-    'Гостиная',
-    'Холл',
-    'Кабинет',
-];
-
-$defaultCharacterStarts = [
-    'Алекс Громов' => [8, 9],
-    'Мария Скарлет' => [7, 9],
-    'Профессор Фиолетов' => [9, 9],
-    'Виктор Олив' => [8, 8],
-    'Елена Белая' => [7, 8],
-    'София Синяя' => [9, 8],
-];
-
+// Максимальное число карточек в группах. rooms: 16 — разумный предел,
+// при необходимости увеличьте для кастомных карт.
 $cardLimits = [
-    'suspects' => 6,
-    'weapons' => 6,
-    'rooms' => 16,
+    'suspects' => 12,
+    'weapons' => 12,
+    'rooms' => 24,
 ];
 
 function add_error(array &$errors, string $message): void
@@ -238,11 +219,10 @@ function validate_cards_block(
 }
 function map_character_starts_for_validation(
     array $map,
-    array $defaultCharacterStarts,
     array &$errors,
     array &$warnings
 ): array {
-    $starts = $defaultCharacterStarts;
+    $starts = [];
 
     if (!isset($map['starts'])) {
         $warnings[] = 'В карте нет блока starts. Используются стартовые позиции по умолчанию.';
@@ -272,24 +252,17 @@ function map_character_starts_for_validation(
     }
 
     /**
-     * Если в карте нет cards.suspects, используем старые имена.
-     * Это fallback для карт, которые ещё не переехали на cards в JSON.
+     * Если в карте нет блока cards.suspects — значит карта не определила
+     * подозреваемых. Стартовые позиции не проверяем.
      */
     if (!$suspectCards) {
-        foreach ($defaultCharacterStarts as $name => $point) {
-            $suspectCards[$name] = $name;
-        }
+        return array_values($starts);
     }
 
     $knownStartKeys = [];
 
     foreach ($suspectCards as $startKey => $name) {
         $knownStartKeys[$startKey] = true;
-
-        if (!isset($defaultCharacterStarts[$name])) {
-            $warnings[] = "cards.suspects содержит персонажа `$name`, которого нет в стандартных персонажах";
-            continue;
-        }
 
         $point = $map['starts'][$startKey] ?? null;
 
@@ -306,7 +279,7 @@ function map_character_starts_for_validation(
         }
 
         if (!is_array($point) || count($point) < 2) {
-            $warnings[] = "В starts не указан персонаж `$name`. Используется fallback.";
+            $warnings[] = "В starts не указана стартовая позиция для `$name`.";
             continue;
         }
 
@@ -324,27 +297,6 @@ function map_character_starts_for_validation(
     }
 
     return array_values($starts);
-}
-
-function default_path_keys(array $characterStarts): array
-{
-    $paths = [];
-
-    /**
-     * Это старый fallback, соответствующий default_board_paths()
-     * из includes/data.php.
-     */
-    for ($y = 4; $y <= 13; $y++) {
-        for ($x = 5; $x <= 11; $x++) {
-            $paths[cell_key($x, $y)] = true;
-        }
-    }
-
-    foreach ($characterStarts as [$x, $y]) {
-        $paths[cell_key((int) $x, (int) $y)] = true;
-    }
-
-    return $paths;
 }
 
 function parse_cell_key(string $key): array
@@ -373,12 +325,13 @@ function map_path_keys(
     array &$errors
 ): array {
     if (!isset($map['paths'])) {
-        return default_path_keys($characterStarts);
+        add_error($errors, 'Отсутствует блок paths — карта должна явно определять коридоры');
+        return [];
     }
 
     if (!is_array($map['paths'])) {
-        add_error($errors, 'paths должен быть массивом координат');
-        return default_path_keys($characterStarts);
+        add_error($errors, 'paths должен быть массивом координат [[x,y],...]');
+        return [];
     }
 
     $paths = [];
@@ -405,6 +358,7 @@ function map_path_keys(
         $paths[cell_key($x, $y)] = true;
     }
 
+    // Проверяем что все стартовые позиции входят в paths
     foreach ($characterStarts as [$x, $y]) {
         $x = (int) $x;
         $y = (int) $y;
@@ -419,12 +373,13 @@ function map_path_keys(
             continue;
         }
 
-        $paths[cell_key($x, $y)] = true;
+        if (!isset($paths[cell_key($x, $y)])) {
+            add_error($errors, "Стартовая позиция [$x,$y] не включена в paths");
+        }
     }
 
     if (!$paths) {
         add_error($errors, 'paths не содержит ни одной валидной клетки');
-        return default_path_keys($characterStarts);
     }
 
     return $paths;
@@ -649,7 +604,8 @@ function map_statistics(
     int $height,
     array $rooms,
     array $pathKeys,
-    array $characterStarts
+    array $characterStarts,
+    array $cardsValidation = []
 ): array {
     $doors = 0;
     $secrets = 0;
@@ -714,8 +670,6 @@ function rooms_overlap(array $a, array $b): bool
 function validate_map_file(
     string $file,
     string $mapsDir,
-    array $requiredRooms,
-    array $defaultCharacterStarts,
     array $cardLimits
 ): array {
     $errors = [];
@@ -747,7 +701,6 @@ function validate_map_file(
     $cardsValidation = validate_cards_block($data, $cardLimits, $errors, $warnings);
     $characterStarts = map_character_starts_for_validation(
         $data,
-        $defaultCharacterStarts,
         $errors,
         $warnings
     );
@@ -817,12 +770,6 @@ function validate_map_file(
     //         }
     //     }
     // }
-
-    foreach ($requiredRooms as $roomName) {
-        if (!isset($rooms[$roomName])) {
-            add_error($errors, "Отсутствует обязательная комната: `$roomName`");
-        }
-    }
 
     foreach ($rooms as $roomName => $room) {
         if (!is_array($room)) {
@@ -961,7 +908,8 @@ function validate_map_file(
         $h,
         $rooms,
         $pathKeys,
-        $characterStarts
+        $characterStarts,
+        $cardsValidation
     );
 
     foreach ($rooms as $roomName => $room) {
@@ -1027,7 +975,7 @@ if (!$isCli) {
 $hasErrors = false;
 
 foreach ($files as $file) {
-    $result = validate_map_file($file, $mapsDir, $requiredRooms, $defaultCharacterStarts, $cardLimits);
+    $result = validate_map_file($file, $mapsDir, $cardLimits);
     $name = basename($file);
 
     if ($result['errors']) {

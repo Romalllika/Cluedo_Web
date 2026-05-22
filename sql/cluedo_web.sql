@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Хост: localhost
--- Время создания: Май 15 2026 г., 14:53
+-- Время создания: Май 21 2026 г., 12:53
 -- Версия сервера: 8.0.39
 -- Версия PHP: 8.2.23
 
@@ -61,6 +61,13 @@ CREATE TABLE `games` (
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Дамп данных таблицы `games`
+--
+
+INSERT INTO `games` (`id`, `title`, `owner_id`, `status`, `max_players`, `map_id`, `current_turn_player_id`, `phase`, `phase_started_at`, `dice_total`, `solution_suspect`, `solution_suspect_card_id`, `solution_weapon`, `solution_weapon_card_id`, `solution_room`, `solution_room_card_id`, `winner_user_id`, `stats_applied`, `pending_suggester_id`, `pending_disprover_id`, `pending_suspect`, `pending_suspect_card_id`, `pending_weapon`, `pending_weapon_card_id`, `pending_room`, `pending_room_card_id`, `shown_card_name`, `shown_card_id`, `shown_by_user_id`, `created_at`, `updated_at`) VALUES
+(32, 'Матч 13:39', 1, 'waiting', 6, 'classic_mansion', NULL, 'join', NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-05-20 13:39:21', '2026-05-20 13:39:21');
+
 -- --------------------------------------------------------
 
 --
@@ -75,6 +82,18 @@ CREATE TABLE `game_character_positions` (
   `pos_y` int NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Дамп данных таблицы `game_character_positions`
+--
+
+INSERT INTO `game_character_positions` (`id`, `game_id`, `character_name`, `pos_x`, `pos_y`, `created_at`) VALUES
+(15211, 32, 'Алекс Громов', 8, 9, '2026-05-20 13:39:21'),
+(15212, 32, 'Мария Скарлет', 7, 9, '2026-05-20 13:39:21'),
+(15213, 32, 'Профессор Фиолетов', 9, 9, '2026-05-20 13:39:21'),
+(15214, 32, 'Виктор Олив', 8, 8, '2026-05-20 13:39:21'),
+(15215, 32, 'Елена Белая', 7, 8, '2026-05-20 13:39:21'),
+(15216, 32, 'София Синяя', 9, 8, '2026-05-20 13:39:21');
 
 -- --------------------------------------------------------
 
@@ -110,6 +129,13 @@ CREATE TABLE `game_players` (
   `joined_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Дамп данных таблицы `game_players`
+--
+
+INSERT INTO `game_players` (`id`, `game_id`, `user_id`, `character_name`, `seat_no`, `turn_order`, `pos_x`, `pos_y`, `is_eliminated`, `afk_misses`, `joined_at`) VALUES
+(30, 32, 1, 'Алекс Громов', 0, 1, 8, 9, 0, 0, '2026-05-20 13:39:21');
+
 -- --------------------------------------------------------
 
 --
@@ -134,6 +160,7 @@ CREATE TABLE `player_cards` (
 CREATE TABLE `users` (
   `id` int NOT NULL,
   `username` varchar(40) COLLATE utf8mb4_general_ci NOT NULL,
+  `role` enum('player','moderator','admin') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'player',
   `password_hash` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `wins` int NOT NULL DEFAULT '0',
   `losses` int NOT NULL DEFAULT '0',
@@ -145,8 +172,8 @@ CREATE TABLE `users` (
 -- Дамп данных таблицы `users`
 --
 
-INSERT INTO `users` (`id`, `username`, `password_hash`, `wins`, `losses`, `games_played`, `created_at`) VALUES
-(1, 'Romalllika', '$2y$10$zFldMeNfUXKYrPzMURl5cOnEdeviqtZoaPFYCvlz.IVxzfvU9EASa', 0, 0, 0, '2026-04-25 13:26:17');
+INSERT INTO `users` (`id`, `username`, `role`, `password_hash`, `wins`, `losses`, `games_played`, `created_at`) VALUES
+(1, 'Romalllika', 'player', '$2y$10$zFldMeNfUXKYrPzMURl5cOnEdeviqtZoaPFYCvlz.IVxzfvU9EASa', 0, 0, 0, '2026-04-25 13:26:17');
 
 --
 -- Индексы сохранённых таблиц
@@ -207,13 +234,13 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT для таблицы `games`
 --
 ALTER TABLE `games`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
 
 --
 -- AUTO_INCREMENT для таблицы `game_character_positions`
 --
 ALTER TABLE `game_character_positions`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13027;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15223;
 
 --
 -- AUTO_INCREMENT для таблицы `game_logs`
@@ -225,7 +252,7 @@ ALTER TABLE `game_logs`
 -- AUTO_INCREMENT для таблицы `game_players`
 --
 ALTER TABLE `game_players`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT для таблицы `player_cards`
