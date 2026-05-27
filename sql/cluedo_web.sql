@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Хост: localhost
--- Время создания: Май 27 2026 г., 10:44
+-- Время создания: Май 27 2026 г., 11:46
 -- Версия сервера: 8.0.39
 -- Версия PHP: 8.2.23
 
@@ -20,6 +20,21 @@ SET time_zone = "+00:00";
 --
 -- База данных: `cluedo_web`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Структура таблицы `friend_requests`
+--
+
+CREATE TABLE `friend_requests` (
+  `id` int NOT NULL,
+  `sender_user_id` int NOT NULL,
+  `receiver_user_id` int NOT NULL,
+  `status` enum('pending','accepted','rejected','cancelled') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -74,6 +89,24 @@ CREATE TABLE `game_character_positions` (
   `pos_x` int NOT NULL,
   `pos_y` int NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Структура таблицы `game_invites`
+--
+
+CREATE TABLE `game_invites` (
+  `id` int NOT NULL,
+  `game_id` int NOT NULL,
+  `sender_user_id` int NOT NULL,
+  `receiver_user_id` int NOT NULL,
+  `status` enum('pending','accepted','rejected','cancelled','expired') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
+  `message` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `expires_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -163,19 +196,30 @@ CREATE TABLE `users` (
   `surrenders` int NOT NULL DEFAULT '0',
   `wrong_accusations` int NOT NULL DEFAULT '0',
   `games_played` int NOT NULL DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_seen_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Дамп данных таблицы `users`
 --
 
-INSERT INTO `users` (`id`, `username`, `role`, `password_hash`, `wins`, `losses`, `surrenders`, `wrong_accusations`, `games_played`, `created_at`) VALUES
-(1, 'Romalllika', 'admin', '$2y$10$zFldMeNfUXKYrPzMURl5cOnEdeviqtZoaPFYCvlz.IVxzfvU9EASa', 0, 0, 0, 0, 0, '2026-04-25 13:26:17');
+INSERT INTO `users` (`id`, `username`, `role`, `password_hash`, `wins`, `losses`, `surrenders`, `wrong_accusations`, `games_played`, `created_at`, `last_seen_at`) VALUES
+(1, 'Romalllika', 'admin', '$2y$10$zFldMeNfUXKYrPzMURl5cOnEdeviqtZoaPFYCvlz.IVxzfvU9EASa', 0, 0, 0, 0, 0, '2026-04-25 13:26:17', '2026-05-27 14:31:30');
 
 --
 -- Индексы сохранённых таблиц
 --
+
+--
+-- Индексы таблицы `friend_requests`
+--
+ALTER TABLE `friend_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uniq_friend_pair_status` (`sender_user_id`,`receiver_user_id`,`status`),
+  ADD KEY `idx_friend_sender` (`sender_user_id`),
+  ADD KEY `idx_friend_receiver` (`receiver_user_id`),
+  ADD KEY `idx_friend_status` (`status`);
 
 --
 -- Индексы таблицы `games`
@@ -190,6 +234,17 @@ ALTER TABLE `games`
 ALTER TABLE `game_character_positions`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uniq_game_character` (`game_id`,`character_name`);
+
+--
+-- Индексы таблицы `game_invites`
+--
+ALTER TABLE `game_invites`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uniq_pending_game_invite` (`game_id`,`sender_user_id`,`receiver_user_id`,`status`),
+  ADD KEY `idx_invites_game` (`game_id`),
+  ADD KEY `idx_invites_sender` (`sender_user_id`),
+  ADD KEY `idx_invites_receiver` (`receiver_user_id`),
+  ADD KEY `idx_invites_status` (`status`);
 
 --
 -- Индексы таблицы `game_logs`
@@ -240,6 +295,12 @@ ALTER TABLE `users`
 --
 
 --
+-- AUTO_INCREMENT для таблицы `friend_requests`
+--
+ALTER TABLE `friend_requests`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT для таблицы `games`
 --
 ALTER TABLE `games`
@@ -250,6 +311,12 @@ ALTER TABLE `games`
 --
 ALTER TABLE `game_character_positions`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21033;
+
+--
+-- AUTO_INCREMENT для таблицы `game_invites`
+--
+ALTER TABLE `game_invites`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT для таблицы `game_logs`

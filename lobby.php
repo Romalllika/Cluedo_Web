@@ -30,6 +30,7 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
     <header class="top"><b>🕵️ Mystery Mansion</b>
         <nav>
             <a href="lobby.php">Лобби</a>
+            <a href="players.php">Игроки</a>
             <a href="profile.php">Мой профиль</a>
             <?php if (user_is_moderator_or_admin()): ?>
                 <a href="admin/index.php">Админка</a>

@@ -263,3 +263,93 @@ function profile_online_class(?string $lastSeenAt): string
         ? 'status-confirmed'
         : 'status-closed';
 }
+
+function get_profile_common_matches_for_report(int $viewerId, int $profileUserId, int $limit = 10): array
+{
+    if ($viewerId === $profileUserId) {
+        return [];
+    }
+
+    $limit = max(1, min($limit, 20));
+
+    $s = db()->prepare(
+        "SELECT
+            g.id,
+            g.title,
+            g.status,
+            g.map_id,
+            g.created_at,
+            g.updated_at
+         FROM games g
+         JOIN game_players viewer_gp
+            ON viewer_gp.game_id = g.id AND viewer_gp.user_id = ?
+         JOIN game_players profile_gp
+            ON profile_gp.game_id = g.id AND profile_gp.user_id = ?
+         ORDER BY g.updated_at DESC, g.id DESC
+         LIMIT $limit"
+    );
+
+    $s->execute([$viewerId, $profileUserId]);
+
+    return $s->fetchAll();
+}
+
+function get_profile_header_counts(
+    int $viewerId,
+    int $profileUserId,
+    array $stats,
+    int $friendsCount,
+    int $commonMatches,
+    array $incomingFriendRequests,
+    array $outgoingFriendRequests,
+    array $incomingGameInvites,
+    array $outgoingGameInvites
+): array {
+    if ($viewerId === $profileUserId) {
+        return [
+            [
+                'label' => 'Друзей',
+                'value' => $friendsCount,
+            ],
+            [
+                'label' => 'Входящих заявок',
+                'value' => count($incomingFriendRequests),
+            ],
+            [
+                'label' => 'Исходящих заявок',
+                'value' => count($outgoingFriendRequests),
+            ],
+            [
+                'label' => 'Приглашений',
+                'value' => count($incomingGameInvites),
+            ],
+            [
+                'label' => 'Исходящих приглашений',
+                'value' => count($outgoingGameInvites),
+            ],
+        ];
+    }
+
+    return [
+        [
+            'label' => 'Матчей',
+            'value' => (int) $stats['games_played'],
+        ],
+        [
+            'label' => 'Побед',
+            'value' => (int) $stats['wins'],
+        ],
+        [
+            'label' => 'Винрейт',
+            'value' => (int) $stats['win_rate'] . '%',
+        ],
+        [
+            'label' => 'Друзей',
+            'value' => $friendsCount,
+        ],
+        [
+            'label' => 'Общих матчей',
+            'value' => $commonMatches,
+        ],
+    ];
+}

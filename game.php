@@ -1,8 +1,11 @@
-<?php 
+<?php
 require 'includes/config.php';
 require_auth();
 require 'includes/maps.php';
 require 'includes/movement.php';
+require 'includes/profile.php';
+
+update_current_user_presence();
 
 $gid = (int) ($_GET['id'] ?? 0);
 $st = db()->prepare('SELECT g.*, u.username owner FROM games g JOIN users u ON u.id=g.owner_id WHERE g.id=?');
@@ -31,10 +34,18 @@ $taken = array_column($players, 'seat_no');
 
 <body data-game="<?= $gid ?>">
     <header class="top"><b>🎲 <?= h($game['title']) ?></b>
-        <nav><?php if ($game['status'] === 'waiting' && $mePlayer): ?>
-                <form action="leave_lobby.php" method="post" class="inline-form"><input type="hidden" name="game_id"
-                        value="<?= $gid ?>"><button class="link-button" type="submit">Покинуть лобби</button></form>
-            <?php endif; ?><a href="lobby.php">← Лобби</a><a href="logout.php">Выход</a>
+        <nav>
+            <?php if ($game['status'] === 'waiting' && $mePlayer): ?>
+                <form action="leave_lobby.php" method="post" class="inline-form">
+                    <input type="hidden" name="game_id" value="<?= $gid ?>">
+                    <button class="link-button" type="submit">Покинуть лобби</button>
+                </form>
+            <?php endif; ?>
+
+            <a href="lobby.php">← Лобби</a>
+            <a href="players.php">Игроки</a>
+            <a href="profile.php">Мой профиль</a>
+            <a href="logout.php">Выход</a>
         </nav>
     </header>
     <main class="game-layout">
