@@ -380,3 +380,228 @@ function report_status_class(string $status): string
         default => 'status-unknown',
     };
 }
+
+function report_action_types(): array
+{
+    return [
+        'none' => 'Без санкции',
+        'warning' => 'Предупреждение',
+        'block_create_games_24h' => 'Запрет создавать игры на 24 часа',
+        'block_games_24h' => 'Запрет участвовать в играх на 24 часа',
+    ];
+}
+
+function report_action_label(string $actionType): string
+{
+    $types = report_action_types();
+
+    return $types[$actionType] ?? $actionType;
+}
+
+function apply_report_decision(
+    int $reportId,
+    int $moderatorId,
+    string $decision,
+    string $reviewComment,
+    string $actionType = 'none'
+): array {
+    $allowedDecisions = ['reviewing', 'confirmed', 'rejected', 'closed'];
+
+    if (!in_array($decision, $allowedDecisions, true)) {
+        return ['error' => 'Некорректное решение по репорту'];
+    }
+
+    if (!array_key_exists($actionType, report_action_types())) {
+        return ['error' => 'Некорректная санкция'];
+    }
+
+    $report = get_report_by_id($reportId);
+
+    if (!$report) {
+        return ['error' => 'Репорт не найден'];
+    }
+
+    $reviewComment = trim($reviewComment);
+
+    if (mb_strlen($reviewComment) > 2000) {
+        $reviewComment = mb_substr($reviewComment, 0, 2000);
+    }
+
+    if ($decision === 'confirmed' && $reviewComment === '') {
+        return ['error' => 'Для подтверждения нарушения нужен комментарий модератора'];
+    }
+
+    if ($decision !== 'confirmed') {
+        $actionType = 'none';
+    }
+
+    $db = db();
+    $db->beginTransaction();
+
+    try {
+        $reviewedAtSql = in_array($decision, ['confirmed', 'rejected', 'closed'], true)
+            ? ', reviewed_at = NOW()'
+            : '';
+
+        $s = $db->prepare(
+            "UPDATE game_reports
+             SET
+                status = ?,
+                reviewer_user_id = ?,
+                review_comment = ?,
+                updated_at = NOW()
+                $reviewedAtSql
+             WHERE id = ?"
+        );
+
+        $s->execute([
+            $decision,
+            $moderatorId,
+            $reviewComment,
+            $reportId,
+        ]);
+
+        if ($decision === 'confirmed' && $actionType !== 'none') {
+            apply_user_moderation_action(
+                $reportId,
+                (int) $report['reported_user_id'],
+                $moderatorId,
+                $actionType,
+                $reviewComment
+            );
+        }
+
+        $db->commit();
+
+        return ['ok' => true];
+    } catch (Throwable $e) {
+        $db->rollBack();
+        throw $e;
+    }
+}
+
+function apply_user_moderation_action(
+    int $reportId,
+    int $targetUserId,
+    int $moderatorId,
+    string $actionType,
+    string $reason
+): void {
+    $expiresAt = null;
+
+    if ($actionType === 'block_create_games_24h' || $actionType === 'block_games_24h') {
+        $expiresAt = date('Y-m-d H:i:s', time() + 86400);
+    }
+
+    db()->prepare(
+        'INSERT INTO user_moderation_actions
+            (report_id, target_user_id, moderator_user_id, action_type, reason, expires_at)
+         VALUES
+            (?, ?, ?, ?, ?, ?)'
+    )->execute([
+        $reportId,
+        $targetUserId,
+        $moderatorId,
+        $actionType,
+        $reason,
+        $expiresAt,
+    ]);
+
+    if ($actionType === 'warning') {
+        db()->prepare(
+            'UPDATE users
+             SET warnings_count = warnings_count + 1
+             WHERE id=?'
+        )->execute([$targetUserId]);
+
+        return;
+    }
+
+    if ($actionType === 'block_create_games_24h') {
+        db()->prepare(
+            'UPDATE users
+             SET create_blocked_until = GREATEST(
+                COALESCE(create_blocked_until, NOW()),
+                DATE_ADD(NOW(), INTERVAL 1 DAY)
+             )
+             WHERE id=?'
+        )->execute([$targetUserId]);
+
+        return;
+    }
+
+    if ($actionType === 'block_games_24h') {
+        db()->prepare(
+            'UPDATE users
+             SET game_banned_until = GREATEST(
+                COALESCE(game_banned_until, NOW()),
+                DATE_ADD(NOW(), INTERVAL 1 DAY)
+             )
+             WHERE id=?'
+        )->execute([$targetUserId]);
+    }
+}
+
+function get_user_game_restriction_message(int $userId): ?string
+{
+    $s = db()->prepare(
+        'SELECT game_banned_until
+         FROM users
+         WHERE id=?'
+    );
+    $s->execute([$userId]);
+
+    $until = $s->fetchColumn();
+
+    if ($until && strtotime((string) $until) > time()) {
+        return 'Вам временно запрещено участвовать в играх до ' . $until;
+    }
+
+    return null;
+}
+
+function get_user_create_restriction_message(int $userId): ?string
+{
+    $s = db()->prepare(
+        'SELECT game_banned_until, create_blocked_until
+         FROM users
+         WHERE id=?'
+    );
+    $s->execute([$userId]);
+
+    $row = $s->fetch();
+
+    if (!$row) {
+        return null;
+    }
+
+    if (!empty($row['game_banned_until']) && strtotime((string) $row['game_banned_until']) > time()) {
+        return 'Вам временно запрещено участвовать в играх до ' . $row['game_banned_until'];
+    }
+
+    if (!empty($row['create_blocked_until']) && strtotime((string) $row['create_blocked_until']) > time()) {
+        return 'Вам временно запрещено создавать игры до ' . $row['create_blocked_until'];
+    }
+
+    return null;
+}
+
+function get_user_moderation_actions(int $userId, int $limit = 10): array
+{
+    $limit = max(1, min($limit, 30));
+
+    $s = db()->prepare(
+        "SELECT
+            uma.*,
+            moderator.username AS moderator_username
+         FROM user_moderation_actions uma
+         JOIN users moderator ON moderator.id = uma.moderator_user_id
+         WHERE uma.target_user_id=?
+         ORDER BY uma.created_at DESC
+         LIMIT $limit"
+    );
+
+    $s->execute([$userId]);
+
+    return $s->fetchAll();
+}

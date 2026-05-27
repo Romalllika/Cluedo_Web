@@ -3,8 +3,18 @@
 require 'includes/config.php';
 require_auth();
 require 'includes/maps.php';
+require 'includes/reports.php';
 
 $uid = current_user_id();
+
+$restriction = get_user_game_restriction_message((int) $uid);
+
+if ($restriction !== null) {
+    $_SESSION['flash_error'] = $restriction;
+    header('Location: lobby.php');
+    exit;
+}
+
 $gid = (int) ($_GET['game_id'] ?? 0);
 $seat = isset($_GET['seat']) ? (int) $_GET['seat'] : -1;
 

@@ -11,20 +11,22 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $reportId = (int) ($_POST['report_id'] ?? 0);
-$status = trim((string) ($_POST['status'] ?? ''));
+$decision = trim((string) ($_POST['decision'] ?? ''));
 $reviewComment = trim((string) ($_POST['review_comment'] ?? ''));
+$actionType = trim((string) ($_POST['action_type'] ?? 'none'));
 
-$result = update_report_status(
+$result = apply_report_decision(
     $reportId,
     (int) current_user_id(),
-    $status,
-    $reviewComment
+    $decision,
+    $reviewComment,
+    $actionType
 );
 
 if (!empty($result['error'])) {
-    http_response_code(400);
-    echo h($result['error']);
-    exit;
+    $_SESSION['flash_error'] = $result['error'];
+} else {
+    $_SESSION['flash_success'] = 'Решение по репорту сохранено';
 }
 
 header('Location: report.php?id=' . $reportId);

@@ -1,7 +1,11 @@
 <?php
-
 require 'includes/config.php';
 require 'includes/maps.php';
+require 'includes/invites.php';
+
+require_auth();
+
+$uid = (int) current_user_id();
 
 require_auth();
 /**
@@ -43,9 +47,10 @@ foreach ($games as &$game) {
 unset($game);
 
 header('Content-Type: application/json; charset=utf-8');
-
+$incomingGameInvites = get_incoming_game_invites($uid);
 echo json_encode([
-    'games' => $games
+    'games' => $games,
+    'incoming_game_invites' => $incomingGameInvites,
 ], JSON_UNESCAPED_UNICODE);
 
 exit;

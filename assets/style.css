@@ -1591,3 +1591,75 @@ td {
     grid-template-columns: 1fr;
   }
 }
+
+a.danger-btn,
+button.danger-btn,
+.danger-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 800;
+  cursor: pointer;
+  background: linear-gradient(135deg, #6d1f1f, #d44848);
+  color: #fff;
+}
+
+a.danger-btn:hover,
+button.danger-btn:hover,
+.danger-btn:hover {
+  filter: brightness(1.08);
+  color: #fff;
+}
+
+.moderation-current-state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.moderation-current-state small {
+  opacity: .7;
+}
+
+.moderation-decision-card {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 16px;
+  background: rgba(255,255,255,.05);
+}
+
+.moderation-decision-card h3 {
+  margin: 0;
+}
+
+.moderation-decision-card p {
+  margin: 0;
+  opacity: .76;
+}
+
+.moderation-decision-card label {
+  display: grid;
+  gap: 6px;
+  font-weight: 800;
+}
+
+.moderation-decision-card select,
+.moderation-decision-card textarea {
+  width: 100%;
+}
+
+.moderation-decision-card.danger-zone {
+  border-color: rgba(220, 53, 69, .35);
+  background: rgba(220, 53, 69, .08);
+}

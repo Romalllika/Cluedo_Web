@@ -19,6 +19,11 @@ $snapshotGame = $snapshot['game'] ?? [];
 $snapshotPlayers = $snapshot['players'] ?? [];
 $snapshotLogs = $snapshot['recent_logs'] ?? [];
 
+$flashSuccess = $_SESSION['flash_success'] ?? '';
+$flashError = $_SESSION['flash_error'] ?? '';
+
+unset($_SESSION['flash_success'], $_SESSION['flash_error']);
+
 ?>
 <!doctype html>
 <html lang="ru">
@@ -42,6 +47,17 @@ $snapshotLogs = $snapshot['recent_logs'] ?? [];
     </header>
 
     <main class="layout">
+        <?php if ($flashSuccess): ?>
+            <section class="panel flash flash-success">
+                <?= h($flashSuccess) ?>
+            </section>
+        <?php endif; ?>
+
+        <?php if ($flashError): ?>
+            <section class="panel flash flash-error">
+                <?= h($flashError) ?>
+            </section>
+        <?php endif; ?>
         <section class="panel hero">
             <h1>Проверка репорта #<?= (int) $report['id'] ?></h1>
             <p>
@@ -229,54 +245,92 @@ $snapshotLogs = $snapshot['recent_logs'] ?? [];
             <div class="panel">
                 <h2>Решение модератора</h2>
 
-                <form action="report_action.php" method="post" class="admin-action-form">
+                <div class="moderation-current-state">
+                    <span class="status-pill <?= h(report_status_class($report['status'])) ?>">
+                        <?= h(report_status_label($report['status'])) ?>
+                    </span>
+
+                    <?php if (!empty($report['reviewer_username'])): ?>
+                        <small>Последнее решение: <?= h($report['reviewer_username']) ?></small>
+                    <?php endif; ?>
+                </div>
+
+                <?php if ($report['status'] === 'open'): ?>
+                    <form action="report_action.php" method="post" class="moderation-decision-card">
+                        <input type="hidden" name="report_id" value="<?= (int) $report['id'] ?>">
+                        <input type="hidden" name="decision" value="reviewing">
+                        <input type="hidden" name="action_type" value="none">
+                        <input type="hidden" name="review_comment" value="<?= h($report['review_comment'] ?? '') ?>">
+
+                        <h3>Первый шаг</h3>
+                        <p>Пометь репорт как взятый в проверку. Это покажет другим модераторам, что репорт уже
+                            обрабатывается.</p>
+
+                        <button type="submit" class="btn">Взять в проверку</button>
+                    </form>
+                <?php endif; ?>
+
+                <form action="report_action.php" method="post" class="moderation-decision-card danger-zone">
                     <input type="hidden" name="report_id" value="<?= (int) $report['id'] ?>">
+                    <input type="hidden" name="decision" value="confirmed">
+
+                    <h3>Подтвердить нарушение</h3>
+                    <p>Используй этот вариант только если по snapshot, логам и контексту матча нарушение действительно
+                        подтверждается.</p>
 
                     <label>
-                        Статус
-                        <select name="status">
-                            <?php foreach (report_statuses() as $key => $label): ?>
-                                <option value="<?= h($key) ?>" <?= $report['status'] === $key ? 'selected' : '' ?>>
-                                    <?= h($label) ?>
-                                </option>
-                            <?php endforeach; ?>
+                        Последствие для игрока
+                        <select name="action_type">
+                            <option value="warning">Предупреждение</option>
+                            <option value="block_create_games_24h">Запрет создавать игры на 24 часа</option>
+                            <option value="block_games_24h">Запрет участвовать в играх на 24 часа</option>
+                            <option value="none">Подтвердить без санкции</option>
                         </select>
                     </label>
 
                     <label>
                         Комментарий модератора
-                        <textarea name="review_comment" rows="8" maxlength="2000"
-                            placeholder="Почему репорт подтверждён, отклонён или закрыт"><?= h($report['review_comment'] ?? '') ?></textarea>
+                        <textarea name="review_comment" rows="6" maxlength="2000" required
+                            placeholder="Что именно подтверждено и почему выбрано это последствие"><?= h($report['review_comment'] ?? '') ?></textarea>
                     </label>
 
-                    <div class="modal-actions">
-                        <button type="submit">Сохранить решение</button>
-                    </div>
+                    <button type="submit" class="danger-btn">Подтвердить нарушение</button>
                 </form>
 
-                <div class="quick-actions">
-                    <form action="report_action.php" method="post">
-                        <input type="hidden" name="report_id" value="<?= (int) $report['id'] ?>">
-                        <input type="hidden" name="status" value="reviewing">
-                        <input type="hidden" name="review_comment" value="<?= h($report['review_comment'] ?? '') ?>">
-                        <button type="submit" class="btn">Взять в проверку</button>
-                    </form>
+                <form action="report_action.php" method="post" class="moderation-decision-card">
+                    <input type="hidden" name="report_id" value="<?= (int) $report['id'] ?>">
+                    <input type="hidden" name="decision" value="rejected">
+                    <input type="hidden" name="action_type" value="none">
 
-                    <form action="report_action.php" method="post">
-                        <input type="hidden" name="report_id" value="<?= (int) $report['id'] ?>">
-                        <input type="hidden" name="status" value="confirmed">
-                        <input type="hidden" name="review_comment" value="Нарушение подтверждено по логам матча.">
-                        <button type="submit" class="danger-btn">Подтвердить</button>
-                    </form>
+                    <h3>Отклонить репорт</h3>
+                    <p>Если нарушение не подтверждается, закрой репорт как отклонённый. Санкции к игроку применены не
+                        будут.</p>
 
-                    <form action="report_action.php" method="post">
-                        <input type="hidden" name="report_id" value="<?= (int) $report['id'] ?>">
-                        <input type="hidden" name="status" value="rejected">
-                        <input type="hidden" name="review_comment"
-                            value="Нарушение не подтверждено по доступным данным.">
-                        <button type="submit" class="btn">Отклонить</button>
-                    </form>
-                </div>
+                    <label>
+                        Комментарий модератора
+                        <textarea name="review_comment" rows="5" maxlength="2000"
+                            placeholder="Почему нарушение не подтверждено"><?= h($report['review_comment'] ?? '') ?></textarea>
+                    </label>
+
+                    <button type="submit" class="btn">Отклонить репорт</button>
+                </form>
+
+                <form action="report_action.php" method="post" class="moderation-decision-card">
+                    <input type="hidden" name="report_id" value="<?= (int) $report['id'] ?>">
+                    <input type="hidden" name="decision" value="closed">
+                    <input type="hidden" name="action_type" value="none">
+
+                    <h3>Закрыть без решения</h3>
+                    <p>Для дублей, ошибочных жалоб, устаревших репортов или случаев, где решение не требуется.</p>
+
+                    <label>
+                        Комментарий модератора
+                        <textarea name="review_comment" rows="4" maxlength="2000"
+                            placeholder="Причина закрытия"><?= h($report['review_comment'] ?? '') ?></textarea>
+                    </label>
+
+                    <button type="submit" class="btn">Закрыть репорт</button>
+                </form>
             </div>
         </section>
     </main>

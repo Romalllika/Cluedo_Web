@@ -3,8 +3,18 @@
 require 'includes/config.php';
 require_auth();
 require 'includes/maps.php';
+require 'includes/reports.php';
 
 $uid = current_user_id();
+
+$restriction = get_user_create_restriction_message((int) $uid);
+
+if ($restriction !== null) {
+    $_SESSION['flash_error'] = $restriction;
+    header('Location: lobby.php');
+    exit;
+}
+
 
 $title = trim($_POST['title'] ?? 'Новая игра');
 

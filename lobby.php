@@ -7,6 +7,11 @@ require 'includes/invites.php';
 update_current_user_presence();
 $uid = current_user_id();
 $incomingGameInvites = get_incoming_game_invites((int) $uid);
+
+$flashSuccess = $_SESSION['flash_success'] ?? '';
+$flashError = $_SESSION['flash_error'] ?? '';
+
+unset($_SESSION['flash_success'], $_SESSION['flash_error']);
 // Автоудаление пустых ожидающих лобби
 // db()->query("DELETE g FROM games g LEFT JOIN game_players gp ON gp.game_id=g.id WHERE g.status='waiting' AND gp.id IS NULL");
 $u = db()->prepare('SELECT *, ROUND(IF(games_played=0,0,wins/games_played*100),1) AS wr FROM users WHERE id=?');
@@ -40,57 +45,66 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
         </nav>
     </header>
     <main class="layout">
+        <?php if ($flashSuccess): ?>
+            <section class="panel flash flash-success">
+                <?= h($flashSuccess) ?>
+            </section>
+        <?php endif; ?>
+
+        <?php if ($flashError): ?>
+            <section class="panel flash flash-error">
+                <?= h($flashError) ?>
+            </section>
+        <?php endif; ?>
         <section class="panel hero">
             <h1>Лобби матчей</h1>
             <p>Играй, занимай персонажа, собирай улики и повышай винрейт.</p>
             <div class="stats"><span>Побед: <?= $me['wins'] ?></span><span>Поражений:
                     <?= $me['losses'] ?></span><span>Винрейт: <?= $me['wr'] ?>%</span></div>
         </section>
-        <?php if ($incomingGameInvites): ?>
-            <section class="panel">
-                <div class="section-head">
-                    <h2>Входящие приглашения</h2>
-                    <small><?= count($incomingGameInvites) ?> активных</small>
-                </div>
+        <section class="panel" id="incomingInvitesPanel" style="<?= $incomingGameInvites ? '' : 'display:none' ?>">
+            <div class="section-head">
+                <h2>Входящие приглашения</h2>
+                <small id="incomingInvitesCount"><?= count($incomingGameInvites) ?> активных</small>
+            </div>
 
-                <div class="invite-list">
-                    <?php foreach ($incomingGameInvites as $invite): ?>
-                        <article class="invite-card">
-                            <div>
-                                <h3><?= h($invite['game_title']) ?></h3>
-                                <p>
-                                    <?= h($invite['sender_username']) ?>
-                                    приглашает вас в матч.
-                                </p>
-                                <small>
-                                    Карта: <?= h($invite['map_id']) ?> ·
-                                    Игроков: <?= (int) $invite['players_count'] ?>/<?= (int) $invite['max_players'] ?> ·
-                                    Истекает: <?= h($invite['expires_at'] ?: '—') ?>
-                                </small>
+            <div class="invite-list" id="incomingInvitesList">
+                <?php foreach ($incomingGameInvites as $invite): ?>
+                    <article class="invite-card">
+                        <div>
+                            <h3><?= h($invite['game_title']) ?></h3>
+                            <p>
+                                <?= h($invite['sender_username']) ?>
+                                приглашает вас в матч.
+                            </p>
+                            <small>
+                                Карта: <?= h($invite['map_id']) ?> ·
+                                Игроков: <?= (int) $invite['players_count'] ?>/<?= (int) $invite['max_players'] ?> ·
+                                Истекает: <?= h($invite['expires_at'] ?: '—') ?>
+                            </small>
 
-                                <?php if (!empty($invite['message'])): ?>
-                                    <p class="muted-text"><?= h($invite['message']) ?></p>
-                                <?php endif; ?>
-                            </div>
+                            <?php if (!empty($invite['message'])): ?>
+                                <p class="muted-text"><?= h($invite['message']) ?></p>
+                            <?php endif; ?>
+                        </div>
 
-                            <div class="invite-actions">
-                                <form action="invite_action.php" method="post">
-                                    <input type="hidden" name="action" value="accept">
-                                    <input type="hidden" name="invite_id" value="<?= (int) $invite['id'] ?>">
-                                    <button class="btn" type="submit">Принять</button>
-                                </form>
+                        <div class="invite-actions">
+                            <form action="invite_action.php" method="post">
+                                <input type="hidden" name="action" value="accept">
+                                <input type="hidden" name="invite_id" value="<?= (int) $invite['id'] ?>">
+                                <button class="btn" type="submit">Принять</button>
+                            </form>
 
-                                <form action="invite_action.php" method="post">
-                                    <input type="hidden" name="action" value="reject">
-                                    <input type="hidden" name="invite_id" value="<?= (int) $invite['id'] ?>">
-                                    <button class="danger-btn" type="submit">Отклонить</button>
-                                </form>
-                            </div>
-                        </article>
-                    <?php endforeach; ?>
-                </div>
-            </section>
-        <?php endif; ?>
+                            <form action="invite_action.php" method="post">
+                                <input type="hidden" name="action" value="reject">
+                                <input type="hidden" name="invite_id" value="<?= (int) $invite['id'] ?>">
+                                <button class="danger-btn" type="submit">Отклонить</button>
+                            </form>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </section>
         <section class="grid2">
             <div class="panel">
                 <h2>Создать игру</h2>
@@ -165,7 +179,7 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
                 if (!data.games) {
                     return;
                 }
-
+                renderIncomingInvites(data.incoming_game_invites || []);
                 if (data.games.length === 0) {
                     box.innerHTML = `
                     <div class="empty-state">
@@ -212,6 +226,55 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
 
         loadLobbyGames();
         setInterval(loadLobbyGames, 2000);
+        function renderIncomingInvites(invites) {
+            const panel = document.querySelector('#incomingInvitesPanel');
+            const list = document.querySelector('#incomingInvitesList');
+            const count = document.querySelector('#incomingInvitesCount');
+
+            if (!panel || !list || !count) {
+                return;
+            }
+
+            if (!Array.isArray(invites) || invites.length === 0) {
+                panel.style.display = 'none';
+                list.innerHTML = '';
+                count.textContent = '0 активных';
+                return;
+            }
+
+            panel.style.display = '';
+            count.textContent = `${invites.length} активных`;
+
+            list.innerHTML = invites.map(invite => `
+        <article class="invite-card">
+            <div>
+                <h3>${escapeHtml(invite.game_title || 'Матч')}</h3>
+                <p>${escapeHtml(invite.sender_username || 'Игрок')} приглашает вас в матч.</p>
+                <small>
+                    Карта: ${escapeHtml(invite.map_id || '—')} ·
+                    Игроков: ${Number(invite.players_count || 0)}/${Number(invite.max_players || 0)} ·
+                    Истекает: ${escapeHtml(invite.expires_at || '—')}
+                </small>
+
+                ${invite.message ? `<p class="muted-text">${escapeHtml(invite.message)}</p>` : ''}
+            </div>
+
+            <div class="invite-actions">
+                <form action="invite_action.php" method="post">
+                    <input type="hidden" name="action" value="accept">
+                    <input type="hidden" name="invite_id" value="${Number(invite.id)}">
+                    <button class="btn" type="submit">Принять</button>
+                </form>
+
+                <form action="invite_action.php" method="post">
+                    <input type="hidden" name="action" value="reject">
+                    <input type="hidden" name="invite_id" value="${Number(invite.id)}">
+                    <button class="danger-btn" type="submit">Отклонить</button>
+                </form>
+            </div>
+        </article>
+    `).join('');
+        }
     </script>
 </body>
 
