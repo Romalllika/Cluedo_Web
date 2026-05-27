@@ -4,6 +4,9 @@ require_auth();
 require 'includes/maps.php';
 require 'includes/movement.php';
 require 'includes/profile.php';
+require 'includes/friends.php';
+require 'includes/invites.php';
+require 'includes/notifications.php';
 
 update_current_user_presence();
 
@@ -21,6 +24,12 @@ $players = db()->prepare('SELECT gp.*,u.username FROM game_players gp JOIN users
 $players->execute([$gid]);
 $players = $players->fetchAll();
 $taken = array_column($players, 'seat_no');
+
+$onlineFriendsForInvite = [];
+
+if ($game['status'] === 'waiting' && $mePlayer) {
+    $onlineFriendsForInvite = get_online_friends_for_game_invite((int) $uid, (int) $gid);
+}
 ?>
 <!doctype html>
 <html lang="ru">
@@ -68,6 +77,9 @@ $taken = array_column($players, 'seat_no');
                 </div>
                 <div class="actions">
                     <button id="startBtn">Старт</button>
+                    <?php if ($game['status'] === 'waiting' && $mePlayer): ?>
+                        <button id="inviteFriendsBtn" type="button">Пригласить</button>
+                    <?php endif; ?>
                     <button id="rollBtn">Бросить кубики</button>
                     <button id="secretPassageBtn">Секретный проход</button>
                     <button id="suggestBtn">Предложение</button>
@@ -100,12 +112,45 @@ $taken = array_column($players, 'seat_no');
             </div>
         </aside>
     </main>
+    <?php if ($game['status'] === 'waiting' && $mePlayer): ?>
+        <template id="inviteFriendsTemplate">
+            <div class="invite-friends-modal">
+                <?php if (!$onlineFriendsForInvite): ?>
+                    <p>Сейчас нет друзей онлайн, которых можно пригласить в этот матч.</p>
+                <?php else: ?>
+                    <div class="friend-list">
+                        <?php foreach ($onlineFriendsForInvite as $friend): ?>
+                            <article class="friend-card">
+                                <div>
+                                    <strong><?= h($friend['username']) ?></strong>
+                                    <small><?= h(profile_online_label($friend['last_seen_at'] ?? null)) ?></small>
+                                </div>
+
+                                <?php if (!empty($friend['pending_invite_id'])): ?>
+                                    <span class="status-pill status-reviewing">Уже приглашён</span>
+                                <?php else: ?>
+                                    <form action="invite_action.php" method="post">
+                                        <input type="hidden" name="action" value="send">
+                                        <input type="hidden" name="game_id" value="<?= (int) $gid ?>">
+                                        <input type="hidden" name="receiver_user_id" value="<?= (int) $friend['id'] ?>">
+                                        <input type="hidden" name="profile_user_id" value="<?= (int) $friend['id'] ?>">
+                                        <button class="btn small" type="submit">Пригласить</button>
+                                    </form>
+                                <?php endif; ?>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </template>
+    <?php endif; ?>
     <div id="modal" class="modal">
         <div class="modal-box"><button class="x" onclick="closeModal()">×</button>
             <h2 id="modalTitle"></h2>
             <div id="modalBody"></div>
         </div>
     </div>
+    <?php render_notification_mount(); ?>
     <script>window.CURRENT_USER_ID = <?= $uid ?>;</script>
     <script src="assets/game.js"></script>
 </body>

@@ -4,6 +4,7 @@ require 'includes/maps.php';
 require 'includes/reports.php';
 require 'includes/profile.php';
 require 'includes/invites.php';
+require 'includes/notifications.php';
 update_current_user_presence();
 $uid = current_user_id();
 $incomingGameInvites = get_incoming_game_invites((int) $uid);
@@ -276,6 +277,7 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
     `).join('');
         }
     </script>
+    <?php render_notification_mount(); ?>
 </body>
 
 </html>

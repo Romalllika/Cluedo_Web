@@ -406,3 +406,43 @@ function cancel_game_invite(int $inviteId, int $senderId): array
 
     return ['ok' => true];
 }
+
+function get_online_friends_for_game_invite(int $userId, int $gameId): array
+{
+    $s = db()->prepare(
+        "SELECT
+            u.id,
+            u.username,
+            u.last_seen_at,
+            gi.id AS pending_invite_id
+         FROM friend_requests fr
+         JOIN users u ON u.id = CASE
+            WHEN fr.sender_user_id = ? THEN fr.receiver_user_id
+            ELSE fr.sender_user_id
+         END
+         LEFT JOIN game_players gp
+            ON gp.game_id = ? AND gp.user_id = u.id
+         LEFT JOIN game_invites gi
+            ON gi.game_id = ?
+           AND gi.sender_user_id = ?
+           AND gi.receiver_user_id = u.id
+           AND gi.status = 'pending'
+         WHERE fr.status = 'accepted'
+           AND (fr.sender_user_id = ? OR fr.receiver_user_id = ?)
+           AND gp.id IS NULL
+           AND u.last_seen_at IS NOT NULL
+           AND u.last_seen_at >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+         ORDER BY u.username ASC"
+    );
+
+    $s->execute([
+        $userId,
+        $gameId,
+        $gameId,
+        $userId,
+        $userId,
+        $userId,
+    ]);
+
+    return $s->fetchAll();
+}

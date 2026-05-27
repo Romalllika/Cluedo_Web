@@ -1321,3 +1321,17 @@ function showErrorNotification(message) {
 const notebookTab = $('#notebookTab'), notebookDrawer = $('#notebookDrawer'), closeNotebook = $('#closeNotebook'); if (notebookTab) notebookTab.onclick = () => notebookDrawer.classList.add('open'); if (closeNotebook) closeNotebook.onclick = () => notebookDrawer.classList.remove('open');
 window.addEventListener('resize', () => { if (state) renderCanvas(); });
 refresh(); setInterval(refresh, 2500);
+const inviteFriendsBtn = document.querySelector('#inviteFriendsBtn');
+
+if (inviteFriendsBtn) {
+  inviteFriendsBtn.addEventListener('click', () => {
+    const template = document.querySelector('#inviteFriendsTemplate');
+
+    if (!template) {
+      showErrorNotification('Список друзей для приглашения не найден');
+      return;
+    }
+
+    openModal('Пригласить друзей', template.innerHTML);
+  });
+}

@@ -5,6 +5,7 @@ require 'includes/profile.php';
 require 'includes/reports.php';
 require 'includes/friends.php';
 require 'includes/players.php';
+require 'includes/notifications.php';
 
 require_auth();
 update_current_user_presence();
@@ -29,6 +30,7 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
     <title>Игроки · Mystery Mansion</title>
     <link rel="stylesheet" href="assets/style.css">
 </head>
+
 <body>
 <header class="top">
     <b>👥 Игроки</b>
@@ -146,5 +148,6 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
         <?php endif; ?>
     </section>
 </main>
+<?php render_notification_mount(); ?>
 </body>
 </html>
