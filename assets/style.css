@@ -1333,6 +1333,74 @@ td {
   }
 }
 
+.profile-actions form,
+.friend-actions form,
+.friend-card form {
+  margin: 0;
+}
+
+.flash {
+  font-weight: 700;
+}
+
+.flash-success {
+  border-color: rgba(40, 167, 69, .35);
+  background: rgba(40, 167, 69, .12);
+}
+
+.flash-error {
+  border-color: rgba(220, 53, 69, .35);
+  background: rgba(220, 53, 69, .12);
+}
+
+.friend-list {
+  display: grid;
+  gap: 10px;
+}
+
+.friend-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.05);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.friend-card div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.friend-card small {
+  opacity: .68;
+}
+
+.friend-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.danger-btn.small {
+  padding: 7px 10px;
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .friend-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .friend-actions {
+    justify-content: flex-start;
+  }
+}
+
 @media (max-width: 520px) {
   .profile-stats-grid {
     grid-template-columns: 1fr;

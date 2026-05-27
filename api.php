@@ -6,10 +6,14 @@ require 'includes/movement.php';
 require 'includes/game_lifecycle.php';
 require 'includes/afk.php';
 require 'includes/reports.php';
+require 'includes/profile.php';
 
 require_auth();
 
 $uid = current_user_id();
+if ($uid) {
+    update_current_user_presence();
+}
 $a = $_POST['action'] ?? $_GET['action'] ?? '';
 $gid = (int) ($_POST['game_id'] ?? $_GET['game_id'] ?? 0);
 

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Хост: localhost
--- Время создания: Май 21 2026 г., 12:53
+-- Время создания: Май 27 2026 г., 10:44
 -- Версия сервера: 8.0.39
 -- Версия PHP: 8.2.23
 
@@ -29,44 +29,37 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `games` (
   `id` int NOT NULL,
-  `title` varchar(80) COLLATE utf8mb4_general_ci NOT NULL,
+  `title` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `owner_id` int NOT NULL,
-  `status` enum('waiting','active','finished') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'waiting',
+  `status` enum('waiting','active','finished') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'waiting',
   `max_players` tinyint NOT NULL DEFAULT '6',
-  `map_id` varchar(50) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'classic_mansion',
+  `map_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'classic_mansion',
   `current_turn_player_id` int DEFAULT NULL,
-  `phase` enum('join','roll','move','suggest','disprove','accuse','ended') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'join',
+  `phase` enum('join','roll','move','suggest','disprove','accuse','ended') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'join',
   `phase_started_at` datetime DEFAULT NULL,
   `dice_total` tinyint DEFAULT '0',
-  `solution_suspect` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `solution_suspect_card_id` varchar(80) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `solution_weapon` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `solution_weapon_card_id` varchar(80) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `solution_room` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `solution_room_card_id` varchar(80) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `solution_suspect` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `solution_suspect_card_id` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `solution_weapon` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `solution_weapon_card_id` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `solution_room` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `solution_room_card_id` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `winner_user_id` int DEFAULT NULL,
   `stats_applied` tinyint(1) NOT NULL DEFAULT '0',
   `pending_suggester_id` int DEFAULT NULL,
   `pending_disprover_id` int DEFAULT NULL,
-  `pending_suspect` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `pending_suspect_card_id` varchar(80) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `pending_weapon` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `pending_weapon_card_id` varchar(80) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `pending_room` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `pending_room_card_id` varchar(80) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `shown_card_name` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `shown_card_id` varchar(80) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `pending_suspect` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `pending_suspect_card_id` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `pending_weapon` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `pending_weapon_card_id` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `pending_room` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `pending_room_card_id` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `shown_card_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `shown_card_id` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `shown_by_user_id` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Дамп данных таблицы `games`
---
-
-INSERT INTO `games` (`id`, `title`, `owner_id`, `status`, `max_players`, `map_id`, `current_turn_player_id`, `phase`, `phase_started_at`, `dice_total`, `solution_suspect`, `solution_suspect_card_id`, `solution_weapon`, `solution_weapon_card_id`, `solution_room`, `solution_room_card_id`, `winner_user_id`, `stats_applied`, `pending_suggester_id`, `pending_disprover_id`, `pending_suspect`, `pending_suspect_card_id`, `pending_weapon`, `pending_weapon_card_id`, `pending_room`, `pending_room_card_id`, `shown_card_name`, `shown_card_id`, `shown_by_user_id`, `created_at`, `updated_at`) VALUES
-(32, 'Матч 13:39', 1, 'waiting', 6, 'classic_mansion', NULL, 'join', NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-05-20 13:39:21', '2026-05-20 13:39:21');
 
 -- --------------------------------------------------------
 
@@ -77,23 +70,11 @@ INSERT INTO `games` (`id`, `title`, `owner_id`, `status`, `max_players`, `map_id
 CREATE TABLE `game_character_positions` (
   `id` int NOT NULL,
   `game_id` int NOT NULL,
-  `character_name` varchar(80) COLLATE utf8mb4_general_ci NOT NULL,
+  `character_name` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `pos_x` int NOT NULL,
   `pos_y` int NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Дамп данных таблицы `game_character_positions`
---
-
-INSERT INTO `game_character_positions` (`id`, `game_id`, `character_name`, `pos_x`, `pos_y`, `created_at`) VALUES
-(15211, 32, 'Алекс Громов', 8, 9, '2026-05-20 13:39:21'),
-(15212, 32, 'Мария Скарлет', 7, 9, '2026-05-20 13:39:21'),
-(15213, 32, 'Профессор Фиолетов', 9, 9, '2026-05-20 13:39:21'),
-(15214, 32, 'Виктор Олив', 8, 8, '2026-05-20 13:39:21'),
-(15215, 32, 'Елена Белая', 7, 8, '2026-05-20 13:39:21'),
-(15216, 32, 'София Синяя', 9, 8, '2026-05-20 13:39:21');
 
 -- --------------------------------------------------------
 
@@ -105,7 +86,7 @@ CREATE TABLE `game_logs` (
   `id` int NOT NULL,
   `game_id` int NOT NULL,
   `user_id` int DEFAULT NULL,
-  `message` text COLLATE utf8mb4_general_ci NOT NULL,
+  `message` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -119,7 +100,7 @@ CREATE TABLE `game_players` (
   `id` int NOT NULL,
   `game_id` int NOT NULL,
   `user_id` int NOT NULL,
-  `character_name` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `character_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `seat_no` tinyint NOT NULL,
   `turn_order` tinyint NOT NULL,
   `pos_x` tinyint NOT NULL DEFAULT '0',
@@ -129,12 +110,27 @@ CREATE TABLE `game_players` (
   `joined_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
 --
--- Дамп данных таблицы `game_players`
+-- Структура таблицы `game_reports`
 --
 
-INSERT INTO `game_players` (`id`, `game_id`, `user_id`, `character_name`, `seat_no`, `turn_order`, `pos_x`, `pos_y`, `is_eliminated`, `afk_misses`, `joined_at`) VALUES
-(30, 32, 1, 'Алекс Громов', 0, 1, 8, 9, 0, 0, '2026-05-20 13:39:21');
+CREATE TABLE `game_reports` (
+  `id` int NOT NULL,
+  `game_id` int NOT NULL,
+  `reporter_user_id` int NOT NULL,
+  `reported_user_id` int NOT NULL,
+  `reason` enum('afk','stalling','abuse','cheating','bug_abuse','other') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'other',
+  `comment` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `status` enum('open','reviewing','confirmed','rejected','closed') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'open',
+  `reviewer_user_id` int DEFAULT NULL,
+  `review_comment` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `snapshot_json` json DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `reviewed_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -146,9 +142,9 @@ CREATE TABLE `player_cards` (
   `id` int NOT NULL,
   `game_id` int NOT NULL,
   `user_id` int NOT NULL,
-  `card_type` enum('suspect','weapon','room') COLLATE utf8mb4_general_ci NOT NULL,
-  `card_id` varchar(80) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `card_name` varchar(50) COLLATE utf8mb4_general_ci NOT NULL
+  `card_type` enum('suspect','weapon','room') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `card_id` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `card_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -159,11 +155,13 @@ CREATE TABLE `player_cards` (
 
 CREATE TABLE `users` (
   `id` int NOT NULL,
-  `username` varchar(40) COLLATE utf8mb4_general_ci NOT NULL,
-  `role` enum('player','moderator','admin') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'player',
-  `password_hash` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `username` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `role` enum('player','moderator','admin') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'player',
+  `password_hash` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `wins` int NOT NULL DEFAULT '0',
   `losses` int NOT NULL DEFAULT '0',
+  `surrenders` int NOT NULL DEFAULT '0',
+  `wrong_accusations` int NOT NULL DEFAULT '0',
   `games_played` int NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -172,8 +170,8 @@ CREATE TABLE `users` (
 -- Дамп данных таблицы `users`
 --
 
-INSERT INTO `users` (`id`, `username`, `role`, `password_hash`, `wins`, `losses`, `games_played`, `created_at`) VALUES
-(1, 'Romalllika', 'player', '$2y$10$zFldMeNfUXKYrPzMURl5cOnEdeviqtZoaPFYCvlz.IVxzfvU9EASa', 0, 0, 0, '2026-04-25 13:26:17');
+INSERT INTO `users` (`id`, `username`, `role`, `password_hash`, `wins`, `losses`, `surrenders`, `wrong_accusations`, `games_played`, `created_at`) VALUES
+(1, 'Romalllika', 'admin', '$2y$10$zFldMeNfUXKYrPzMURl5cOnEdeviqtZoaPFYCvlz.IVxzfvU9EASa', 0, 0, 0, 0, 0, '2026-04-25 13:26:17');
 
 --
 -- Индексы сохранённых таблиц
@@ -211,6 +209,17 @@ ALTER TABLE `game_players`
   ADD KEY `user_id` (`user_id`);
 
 --
+-- Индексы таблицы `game_reports`
+--
+ALTER TABLE `game_reports`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uniq_open_report_per_match_pair` (`game_id`,`reporter_user_id`,`reported_user_id`,`status`),
+  ADD KEY `idx_reports_game` (`game_id`),
+  ADD KEY `idx_reports_reporter` (`reporter_user_id`),
+  ADD KEY `idx_reports_reported` (`reported_user_id`),
+  ADD KEY `idx_reports_status` (`status`);
+
+--
 -- Индексы таблицы `player_cards`
 --
 ALTER TABLE `player_cards`
@@ -234,13 +243,13 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT для таблицы `games`
 --
 ALTER TABLE `games`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
 
 --
 -- AUTO_INCREMENT для таблицы `game_character_positions`
 --
 ALTER TABLE `game_character_positions`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15223;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21033;
 
 --
 -- AUTO_INCREMENT для таблицы `game_logs`
@@ -252,7 +261,13 @@ ALTER TABLE `game_logs`
 -- AUTO_INCREMENT для таблицы `game_players`
 --
 ALTER TABLE `game_players`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+
+--
+-- AUTO_INCREMENT для таблицы `game_reports`
+--
+ALTER TABLE `game_reports`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT для таблицы `player_cards`

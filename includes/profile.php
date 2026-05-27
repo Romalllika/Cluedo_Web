@@ -21,7 +21,8 @@ function get_profile_user(int $userId): ?array
             games_played,
             surrenders,
             wrong_accusations,
-            created_at
+            created_at,
+            last_seen_at
          FROM users
          WHERE id=?'
     );
@@ -211,4 +212,54 @@ function get_profile_recent_reports(int $userId, int $limit = 5): array
     $s->execute([$userId, $userId]);
 
     return $s->fetchAll();
+}
+
+function update_current_user_presence(): void
+{
+    $uid = current_user_id();
+
+    if (!$uid) {
+        return;
+    }
+
+    db()->prepare(
+        'UPDATE users
+         SET last_seen_at = NOW()
+         WHERE id=?'
+    )->execute([(int) $uid]);
+}
+
+function profile_is_online(?string $lastSeenAt): bool
+{
+    if (!$lastSeenAt) {
+        return false;
+    }
+
+    $lastSeen = strtotime($lastSeenAt);
+
+    if (!$lastSeen) {
+        return false;
+    }
+
+    return $lastSeen >= time() - 300;
+}
+
+function profile_online_label(?string $lastSeenAt): string
+{
+    if (!$lastSeenAt) {
+        return 'Оффлайн';
+    }
+
+    if (profile_is_online($lastSeenAt)) {
+        return 'Онлайн';
+    }
+
+    return 'Был в сети: ' . $lastSeenAt;
+}
+
+function profile_online_class(?string $lastSeenAt): string
+{
+    return profile_is_online($lastSeenAt)
+        ? 'status-confirmed'
+        : 'status-closed';
 }
