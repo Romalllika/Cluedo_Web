@@ -4,6 +4,7 @@ require 'includes/config.php';
 require 'includes/profile.php';
 require 'includes/reports.php';
 require 'includes/friends.php';
+require 'includes/invites.php';
 
 require_auth();
 update_current_user_presence();
@@ -32,6 +33,13 @@ $friendsCount = count_user_friends((int) $user['id']);
 
 $incomingFriendRequests = $isMe ? get_incoming_friend_requests($viewerId) : [];
 $outgoingFriendRequests = $isMe ? get_outgoing_friend_requests($viewerId) : [];
+
+$invitableGames = (!$isMe && $friendRelation['type'] === 'friends')
+    ? get_invitable_games_for_user($viewerId, (int) $user['id'])
+    : [];
+
+$outgoingGameInvites = $isMe ? get_outgoing_game_invites($viewerId) : [];
+$incomingGameInvites = $isMe ? get_incoming_game_invites($viewerId) : [];
 
 $flashSuccess = $_SESSION['flash_success'] ?? '';
 $flashError = $_SESSION['flash_error'] ?? '';
@@ -276,18 +284,43 @@ $recentReports = $isModerator ? get_profile_recent_reports((int) $user['id']) : 
             <div class="panel">
                 <h2>Приглашения в игру</h2>
 
-                <div class="empty-feature-card">
-                    <h3>Следующий этап</h3>
-                    <p>
-                        После друзей подключим приглашения в лобби: можно будет выбрать друга
-                        и отправить ему приглашение в конкретный матч.
-                    </p>
-                </div>
-
                 <?php if (!$isMe && $friendRelation['type'] === 'friends'): ?>
-                    <button type="button" class="btn" disabled>Пригласить в игру — скоро</button>
+                    <?php if (!$invitableGames): ?>
+                        <p>Нет доступных ожидающих матчей для приглашения этого друга.</p>
+                    <?php else: ?>
+                        <div class="invite-list">
+                            <?php foreach ($invitableGames as $game): ?>
+                                <article class="invite-card">
+                                    <div>
+                                        <h3><?= h($game['title']) ?></h3>
+                                        <small>
+                                            Карта: <?= h($game['map_id']) ?> ·
+                                            Игроков: <?= (int) $game['players_count'] ?>/<?= (int) $game['max_players'] ?>
+                                        </small>
+                                    </div>
+
+                                    <?php if ((int) $game['has_pending_invite'] > 0): ?>
+                                        <span class="status-pill status-reviewing">Уже приглашён</span>
+                                    <?php else: ?>
+                                        <form action="invite_action.php" method="post" class="invite-send-form">
+                                            <input type="hidden" name="action" value="send">
+                                            <input type="hidden" name="game_id" value="<?= (int) $game['id'] ?>">
+                                            <input type="hidden" name="receiver_user_id" value="<?= (int) $user['id'] ?>">
+                                            <input type="hidden" name="profile_user_id" value="<?= (int) $user['id'] ?>">
+                                            <input name="message" maxlength="255" placeholder="Сообщение, необязательно">
+                                            <button class="btn" type="submit">Пригласить</button>
+                                        </form>
+                                    <?php endif; ?>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                <?php elseif ($isMe): ?>
+                    <p class="muted-text">
+                        Здесь отображаются ваши игровые приглашения. Новые приглашения также видны в лобби.
+                    </p>
                 <?php else: ?>
-                    <p class="muted-text">Приглашать в игру можно будет друзей.</p>
+                    <p class="muted-text">Приглашать в игру можно только друзей.</p>
                 <?php endif; ?>
             </div>
         </section>
@@ -354,6 +387,76 @@ $recentReports = $isModerator ? get_profile_recent_reports((int) $user['id']) : 
                                         <input type="hidden" name="request_id" value="<?= (int) $request['id'] ?>">
                                         <input type="hidden" name="profile_user_id"
                                             value="<?= (int) $request['receiver_user_id'] ?>">
+                                        <button class="btn small" type="submit">Отменить</button>
+                                    </form>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </section>
+        <?php endif; ?>
+
+        <?php if ($isMe): ?>
+            <section class="grid2">
+                <div class="panel">
+                    <h2>Входящие приглашения в игру</h2>
+
+                    <?php if (!$incomingGameInvites): ?>
+                        <p>Входящих приглашений в игру нет.</p>
+                    <?php else: ?>
+                        <div class="invite-list">
+                            <?php foreach ($incomingGameInvites as $invite): ?>
+                                <article class="invite-card">
+                                    <div>
+                                        <h3><?= h($invite['game_title']) ?></h3>
+                                        <p><?= h($invite['sender_username']) ?> приглашает вас в матч.</p>
+                                        <small>
+                                            Карта: <?= h($invite['map_id']) ?> ·
+                                            Игроков: <?= (int) $invite['players_count'] ?>/<?= (int) $invite['max_players'] ?>
+                                        </small>
+                                    </div>
+
+                                    <div class="invite-actions">
+                                        <form action="invite_action.php" method="post">
+                                            <input type="hidden" name="action" value="accept">
+                                            <input type="hidden" name="invite_id" value="<?= (int) $invite['id'] ?>">
+                                            <button class="btn small" type="submit">Принять</button>
+                                        </form>
+
+                                        <form action="invite_action.php" method="post">
+                                            <input type="hidden" name="action" value="reject">
+                                            <input type="hidden" name="invite_id" value="<?= (int) $invite['id'] ?>">
+                                            <button class="danger-btn small" type="submit">Отклонить</button>
+                                        </form>
+                                    </div>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="panel">
+                    <h2>Исходящие приглашения в игру</h2>
+
+                    <?php if (!$outgoingGameInvites): ?>
+                        <p>Исходящих приглашений в игру нет.</p>
+                    <?php else: ?>
+                        <div class="invite-list">
+                            <?php foreach ($outgoingGameInvites as $invite): ?>
+                                <article class="invite-card">
+                                    <div>
+                                        <h3><?= h($invite['game_title']) ?></h3>
+                                        <p>Приглашён: <?= h($invite['receiver_username']) ?></p>
+                                        <small>
+                                            Карта: <?= h($invite['map_id']) ?> ·
+                                            Игроков: <?= (int) $invite['players_count'] ?>/<?= (int) $invite['max_players'] ?>
+                                        </small>
+                                    </div>
+
+                                    <form action="invite_action.php" method="post">
+                                        <input type="hidden" name="action" value="cancel">
+                                        <input type="hidden" name="invite_id" value="<?= (int) $invite['id'] ?>">
                                         <button class="btn small" type="submit">Отменить</button>
                                     </form>
                                 </article>

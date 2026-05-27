@@ -6,12 +6,35 @@ require 'includes/maps.php';
 
 $uid = current_user_id();
 $gid = (int) ($_GET['game_id'] ?? 0);
-$seat = (int) ($_GET['seat'] ?? -1);
+$seat = isset($_GET['seat']) ? (int) $_GET['seat'] : -1;
 
 $chars = characters_for_game($gid);
 
-if ($gid <= 0 || !isset($chars[$seat])) {
+if ($gid <= 0) {
     header('Location: lobby.php');
+    exit;
+}
+
+if ($seat < 0) {
+    $takenStmt = db()->prepare(
+        'SELECT seat_no
+         FROM game_players
+         WHERE game_id=?'
+    );
+    $takenStmt->execute([$gid]);
+
+    $takenSeats = array_map('intval', array_column($takenStmt->fetchAll(), 'seat_no'));
+
+    foreach ($chars as $i => $char) {
+        if (!in_array((int) $i, $takenSeats, true)) {
+            $seat = (int) $i;
+            break;
+        }
+    }
+}
+
+if (!isset($chars[$seat])) {
+    header('Location: game.php?id=' . $gid . '&full=1');
     exit;
 }
 

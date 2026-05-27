@@ -3,8 +3,10 @@ require_auth();
 require 'includes/maps.php';
 require 'includes/reports.php';
 require 'includes/profile.php';
+require 'includes/invites.php';
 update_current_user_presence();
 $uid = current_user_id();
+$incomingGameInvites = get_incoming_game_invites((int) $uid);
 // Автоудаление пустых ожидающих лобби
 // db()->query("DELETE g FROM games g LEFT JOIN game_players gp ON gp.game_id=g.id WHERE g.status='waiting' AND gp.id IS NULL");
 $u = db()->prepare('SELECT *, ROUND(IF(games_played=0,0,wins/games_played*100),1) AS wr FROM users WHERE id=?');
@@ -43,6 +45,51 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
             <div class="stats"><span>Побед: <?= $me['wins'] ?></span><span>Поражений:
                     <?= $me['losses'] ?></span><span>Винрейт: <?= $me['wr'] ?>%</span></div>
         </section>
+        <?php if ($incomingGameInvites): ?>
+            <section class="panel">
+                <div class="section-head">
+                    <h2>Входящие приглашения</h2>
+                    <small><?= count($incomingGameInvites) ?> активных</small>
+                </div>
+
+                <div class="invite-list">
+                    <?php foreach ($incomingGameInvites as $invite): ?>
+                        <article class="invite-card">
+                            <div>
+                                <h3><?= h($invite['game_title']) ?></h3>
+                                <p>
+                                    <?= h($invite['sender_username']) ?>
+                                    приглашает вас в матч.
+                                </p>
+                                <small>
+                                    Карта: <?= h($invite['map_id']) ?> ·
+                                    Игроков: <?= (int) $invite['players_count'] ?>/<?= (int) $invite['max_players'] ?> ·
+                                    Истекает: <?= h($invite['expires_at'] ?: '—') ?>
+                                </small>
+
+                                <?php if (!empty($invite['message'])): ?>
+                                    <p class="muted-text"><?= h($invite['message']) ?></p>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="invite-actions">
+                                <form action="invite_action.php" method="post">
+                                    <input type="hidden" name="action" value="accept">
+                                    <input type="hidden" name="invite_id" value="<?= (int) $invite['id'] ?>">
+                                    <button class="btn" type="submit">Принять</button>
+                                </form>
+
+                                <form action="invite_action.php" method="post">
+                                    <input type="hidden" name="action" value="reject">
+                                    <input type="hidden" name="invite_id" value="<?= (int) $invite['id'] ?>">
+                                    <button class="danger-btn" type="submit">Отклонить</button>
+                                </form>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        <?php endif; ?>
         <section class="grid2">
             <div class="panel">
                 <h2>Создать игру</h2>

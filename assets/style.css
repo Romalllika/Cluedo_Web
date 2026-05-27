@@ -1406,3 +1406,72 @@ td {
     grid-template-columns: 1fr;
   }
 }
+
+.invite-list {
+  display: grid;
+  gap: 12px;
+}
+
+.invite-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.05);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.invite-card h3 {
+  margin: 0 0 6px;
+}
+
+.invite-card p {
+  margin: 0 0 6px;
+}
+
+.invite-card small {
+  opacity: .68;
+}
+
+.invite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.invite-actions form,
+.invite-card form {
+  margin: 0;
+}
+
+.invite-send-form {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 320px;
+}
+
+.invite-send-form input {
+  width: 100%;
+}
+
+@media (max-width: 720px) {
+  .invite-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .invite-actions {
+    justify-content: flex-start;
+  }
+
+  .invite-send-form {
+    grid-template-columns: 1fr;
+    min-width: 0;
+    width: 100%;
+  }
+}
