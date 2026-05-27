@@ -5,6 +5,7 @@ require 'includes/maps.php';
 require 'includes/movement.php';
 require 'includes/game_lifecycle.php';
 require 'includes/afk.php';
+require 'includes/reports.php';
 
 require_auth();
 
@@ -263,6 +264,34 @@ function auto_show_card_from_eliminated_player(
         'card_id' => $card['card_id'] ?? null,
         'by_user_id' => $disproverId
     ];
+}
+
+if ($a === 'reportPlayer') {
+    $reportedId = (int) ($_POST['reported_user_id'] ?? 0);
+    $reason = trim((string) ($_POST['reason'] ?? 'other'));
+    $comment = trim((string) ($_POST['comment'] ?? ''));
+
+    if ($gid <= 0) {
+        json_out(['error' => 'Матч не найден']);
+    }
+
+    if ($reportedId <= 0) {
+        json_out(['error' => 'Игрок не выбран']);
+    }
+
+    $result = create_game_report($gid, $uid, $reportedId, $reason, $comment);
+
+    if (!empty($result['error'])) {
+        json_out(['error' => $result['error']]);
+    }
+
+    log_msg($gid, null, 'В матче создан репорт для проверки модератором.');
+
+    json_out([
+        'ok' => true,
+        'message' => 'Репорт отправлен. Модератор сможет проверить матч по логам.',
+        'report_id' => $result['report_id'],
+    ]);
 }
 
 if ($a === 'state') {
@@ -1031,7 +1060,11 @@ if ($a === 'accuse') {
          SET is_eliminated=1
          WHERE game_id=? AND user_id=?'
     )->execute([$gid, $uid]);
-
+    db()->prepare(
+        'UPDATE users
+        SET wrong_accusations = wrong_accusations + 1
+        WHERE id=?'
+    )->execute([$uid]);
     reset_player_afk($gid, $uid);
     log_msg($gid, $uid, 'Обвинение неверное. Игрок выбывает из расследования.');
 

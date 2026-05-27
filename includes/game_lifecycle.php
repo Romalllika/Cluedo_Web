@@ -222,6 +222,11 @@ function surrender_player(int $gid, int $uid, string $reason = 'Игрок сд�
          SET is_eliminated=1
          WHERE game_id=? AND user_id=?'
     )->execute([$gid, $uid]);
+    db()->prepare(
+        'UPDATE users
+        SET surrenders = surrenders + 1
+        WHERE id=?'
+    )->execute([$uid]);
 
     log_msg($gid, $uid, $reason);
 

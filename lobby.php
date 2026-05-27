@@ -1,6 +1,7 @@
 <?php require 'includes/config.php';
 require_auth();
 require 'includes/maps.php';
+require 'includes/reports.php';
 $uid = current_user_id();
 // Автоудаление пустых ожидающих лобби
 // db()->query("DELETE g FROM games g LEFT JOIN game_players gp ON gp.game_id=g.id WHERE g.status='waiting' AND gp.id IS NULL");
@@ -23,7 +24,15 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
 
 <body>
     <header class="top"><b>🕵️ Mystery Mansion</b>
-        <nav><a href="lobby.php">Лобби</a><a href="logout.php">Выход</a></nav>
+        <nav>
+            <a href="lobby.php">Лобби</a>
+            <a href="profile.php">Мой профиль</a>
+            <?php if (user_is_moderator_or_admin()): ?>
+                <a href="admin/index.php">Админка</a>
+            <?php endif; ?>
+
+            <a href="logout.php">Выход</a>
+        </nav>
     </header>
     <main class="layout">
         <section class="panel hero">

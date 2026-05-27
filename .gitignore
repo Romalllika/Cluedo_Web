@@ -1,3 +1,11 @@
-.DS_Store
 .env
-./sql/schema.sql
+.DS_Store
+__MACOSX/
+
+*.log
+*.tmp
+
+/sql/schema.sql
+/sql/seed.sql
+
+/vendor/

@@ -80,6 +80,68 @@ function api(action, data = {}) {
 }
 function closeModal() { $('#modal').classList.remove('show'); }
 function openModal(title, html) { $('#modalTitle').textContent = title; $('#modalBody').innerHTML = html; $('#modal').classList.add('show'); }
+function openPlayerReportModal(player) {
+  if (!player || !player.user_id) {
+    showErrorNotification('Игрок не найден');
+    return;
+  }
+
+  if (+player.user_id === +CURRENT_USER_ID) {
+    showErrorNotification('Нельзя отправить репорт на самого себя');
+    return;
+  }
+
+  openModal('Жалоба на игрока', `
+    <div class="form-stack">
+      <div class="report-target-card">
+        <small>Игрок</small>
+        <strong>${escapeHtml(player.username || 'Игрок')}</strong>
+        <span>${escapeHtml(player.character_name || '')}</span>
+      </div>
+
+      <label>
+        Причина
+        <select id="reportReasonSelect">
+          <option value="afk">AFK / не играет</option>
+          <option value="stalling">Затягивание хода</option>
+          <option value="abuse">Оскорбления / неспортивное поведение</option>
+          <option value="cheating">Подозрение на нечестную игру</option>
+          <option value="bug_abuse">Злоупотребление багом</option>
+          <option value="other">Другое</option>
+        </select>
+      </label>
+
+      <label>
+        Комментарий
+        <textarea id="reportCommentInput" rows="5" maxlength="1000" placeholder="Кратко опиши, что произошло"></textarea>
+      </label>
+
+      <div class="modal-actions">
+        <button id="sendReportBtn" class="danger-btn" type="button">Отправить жалобу</button>
+      </div>
+    </div>
+  `);
+
+  $('#sendReportBtn').onclick = async () => {
+    const reason = $('#reportReasonSelect').value;
+    const comment = $('#reportCommentInput').value.trim();
+
+    const r = await api('reportPlayer', {
+      reported_user_id: player.user_id,
+      reason,
+      comment
+    });
+
+    if (r.error) {
+      showErrorNotification(r.error);
+      return;
+    }
+
+    closeModal();
+    showSuccessNotification(r.message || 'Жалоба отправлена');
+    refresh();
+  };
+}
 let fatalGameErrorShown = false;
 
 async function refresh() {
@@ -451,12 +513,59 @@ function renderPlayersAndSeats() {
   const playersBox = $('#players');
 
   if (playersBox) {
-    playersBox.innerHTML = state.players.map(p => `
-      <div class="player ${+p.user_id === +state.game.current_turn_player_id ? 'current-player' : ''}">
-        <b>${p.character_name}</b>
-        <span>${p.username}${+p.is_eliminated ? ' · выбыл' : ''}</span>
+    playersBox.innerHTML = state.players.map(p => {
+      const isMe = +p.user_id === +CURRENT_USER_ID;
+      const isCurrent = +p.user_id === +state.game.current_turn_player_id;
+      const eliminatedText = +p.is_eliminated ? ' · выбыл' : '';
+
+      return `
+      <div class="player ${isCurrent ? 'current-player' : ''}" data-user-id="${Number(p.user_id)}">
+        <div class="player-main">
+          <b>${escapeHtml(p.character_name || 'Персонаж')}</b>
+          <span>${escapeHtml(p.username || 'Игрок')}${eliminatedText}</span>
+        </div>
+
+        <div class="player-actions">
+          <button
+            class="player-mini-btn"
+            type="button"
+            data-profile-user-id="${Number(p.user_id)}"
+            title="Профиль игрока"
+          >Профиль</button>
+
+          ${isMe ? '' : `
+            <button
+              class="player-mini-btn danger"
+              type="button"
+              data-report-user-id="${Number(p.user_id)}"
+              title="Пожаловаться на игрока"
+            >Жалоба</button>
+          `}
+        </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
+
+    playersBox.querySelectorAll('[data-report-user-id]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const userId = Number(btn.dataset.reportUserId);
+        const player = state.players.find(p => +p.user_id === userId);
+
+        openPlayerReportModal(player);
+      });
+    });
+    playersBox.querySelectorAll('[data-profile-user-id]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const userId = Number(btn.dataset.profileUserId);
+
+        if (!userId) {
+          showErrorNotification('Профиль игрока не найден');
+          return;
+        }
+
+        window.location.href = `profile.php?id=${encodeURIComponent(userId)}`;
+      });
+    });
   }
 
   const seatsBox = $('#seats');

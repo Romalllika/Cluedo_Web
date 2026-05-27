@@ -928,3 +928,413 @@ td {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+.form-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.form-stack label {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.form-stack select,
+.form-stack textarea {
+  width: 100%;
+}
+
+.form-stack textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 14px;
+}
+
+.admin-stat-card {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.18);
+}
+
+.admin-stat-card small {
+  display: block;
+  opacity: .75;
+  margin-bottom: 8px;
+}
+
+.admin-stat-card strong {
+  font-size: 32px;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  text-align: left;
+  vertical-align: top;
+}
+
+.admin-table th {
+  opacity: .8;
+  font-size: 13px;
+}
+
+.admin-table small {
+  opacity: .7;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid rgba(255,255,255,.16);
+}
+
+.status-open {
+  background: rgba(255, 193, 7, .16);
+}
+
+.status-reviewing {
+  background: rgba(0, 123, 255, .16);
+}
+
+.status-confirmed {
+  background: rgba(220, 53, 69, .18);
+}
+
+.status-rejected {
+  background: rgba(40, 167, 69, .16);
+}
+
+.status-closed {
+  background: rgba(108, 117, 125, .18);
+}
+
+.admin-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-filters .active {
+  outline: 2px solid rgba(255,255,255,.45);
+}
+
+.admin-dl {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 10px 16px;
+}
+
+.admin-dl dt {
+  opacity: .7;
+  font-weight: 700;
+}
+
+.admin-dl dd {
+  margin: 0;
+}
+
+.admin-log-list {
+  display: grid;
+  gap: 10px;
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.admin-log-item {
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,.05);
+}
+
+.admin-log-item small {
+  opacity: .65;
+}
+
+.admin-log-item p {
+  margin: 6px 0 0;
+}
+
+.admin-action-form {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-action-form label {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.admin-action-form select,
+.admin-action-form textarea {
+  width: 100%;
+}
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.quick-actions form {
+  margin: 0;
+}
+
+.row-danger {
+  background: rgba(220, 53, 69, .12);
+}
+
+.row-info {
+  background: rgba(0, 123, 255, .10);
+}
+
+.btn.small {
+  padding: 7px 10px;
+  font-size: 13px;
+}
+.player {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.player-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.player-main b,
+.player-main span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.player-mini-btn {
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  background: rgba(255,255,255,.08);
+  color: inherit;
+}
+
+.player-mini-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,.15);
+}
+
+.player-mini-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.player-mini-btn.danger {
+  background: rgba(220, 53, 69, .18);
+}
+
+.player-mini-btn.danger:hover {
+  background: rgba(220, 53, 69, .28);
+}
+
+.report-target-card {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+}
+
+.report-target-card small {
+  opacity: .7;
+}
+
+.report-target-card strong {
+  font-size: 18px;
+}
+
+.report-target-card span {
+  opacity: .8;
+}
+
+@media (max-width: 700px) {
+  .player {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .player-actions {
+    justify-content: flex-start;
+  }
+}
+@media (max-width: 900px) {
+  .admin-stats {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+
+  .admin-dl {
+    grid-template-columns: 1fr;
+  }
+
+  .section-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+.profile-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.profile-hero h1 {
+  margin: 4px 0 12px;
+}
+
+.muted-label {
+  margin: 0;
+  opacity: .65;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: 12px;
+}
+
+.muted-text {
+  opacity: .7;
+}
+
+.profile-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.profile-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(110px, 1fr));
+  gap: 12px;
+}
+
+.profile-stat-card {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.profile-stat-card small {
+  display: block;
+  opacity: .7;
+  margin-bottom: 8px;
+}
+
+.profile-stat-card strong {
+  display: block;
+  font-size: 28px;
+}
+
+.empty-feature-card {
+  border: 1px dashed rgba(255,255,255,.2);
+  background: rgba(255,255,255,.04);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.empty-feature-card h3,
+.empty-feature-card h4 {
+  margin-top: 0;
+}
+
+.empty-feature-card p {
+  opacity: .72;
+  margin-bottom: 0;
+}
+
+.profile-action-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.profile-moderation-grid {
+  margin-top: 18px;
+}
+
+@media (max-width: 800px) {
+  .profile-hero {
+    flex-direction: column;
+  }
+
+  .profile-actions {
+    justify-content: flex-start;
+  }
+
+  .profile-stats-grid {
+    grid-template-columns: repeat(2, minmax(110px, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .profile-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
