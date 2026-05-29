@@ -7,6 +7,7 @@ require 'includes/game_lifecycle.php';
 require 'includes/afk.php';
 require 'includes/reports.php';
 require 'includes/profile.php';
+require 'includes/progression.php';
 
 require_auth();
 
@@ -663,6 +664,8 @@ if ($a === 'secretPassage') {
 
     reset_player_afk($gid, $uid);
 
+    progress_daily_task($uid, 'use_secret_passage');
+
     log_msg(
         $gid,
         $uid,
@@ -816,6 +819,11 @@ if ($a === 'suggest') {
     }
 
     log_msg($gid, $uid, "Предложение: $sus, $weap, $room. Персонаж «$sus» перемещён в комнату.");
+
+    progress_daily_tasks_bulk($uid, [
+        'make_1_suggestion',
+        'make_3_suggestions',
+    ]);
 
     for ($i = 1; $i < count($ps); $i++) {
         $other = $ps[($start + $i) % count($ps)];
@@ -982,6 +990,12 @@ if ($a === 'showCard') {
             ]);
 
     reset_player_afk($gid, $uid);
+
+    progress_daily_tasks_bulk($uid, [
+        'show_1_card',
+        'show_3_cards',
+    ]);
+
     log_msg($gid, $uid, 'Игрок показал карту для опровержения предположения.');
 
     json_out(['ok' => 1]);
@@ -1034,6 +1048,8 @@ if ($a === 'accuse') {
     ) {
         json_out(['error' => 'Некорректное обвинение']);
     }
+
+    progress_daily_task($uid, 'make_1_accusation');
 
     $hasSolutionIds =
         !empty($g['solution_suspect_card_id']) &&
@@ -1102,6 +1118,9 @@ if ($a === 'endTurn') {
     }
 
     reset_player_afk($gid, $uid);
+
+    progress_daily_task($uid, 'finish_5_turns');
+    
     next_turn($gid);
     log_msg($gid, $uid, 'Ход завершён.');
 

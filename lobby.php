@@ -5,8 +5,15 @@ require 'includes/reports.php';
 require 'includes/profile.php';
 require 'includes/invites.php';
 require 'includes/notifications.php';
+require 'includes/progression.php';
+
 update_current_user_presence();
 $uid = current_user_id();
+
+$accountXp = get_user_account_xp((int) $uid);
+$levelProgress = account_level_progress($accountXp);
+$dailyTasks = get_daily_tasks((int) $uid);
+
 $incomingGameInvites = get_incoming_game_invites((int) $uid);
 
 $flashSuccess = $_SESSION['flash_success'] ?? '';
@@ -57,11 +64,69 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
                 <?= h($flashError) ?>
             </section>
         <?php endif; ?>
-        <section class="panel hero">
-            <h1>Лобби матчей</h1>
-            <p>Играй, занимай персонажа, собирай улики и повышай винрейт.</p>
-            <div class="stats"><span>Побед: <?= $me['wins'] ?></span><span>Поражений:
-                    <?= $me['losses'] ?></span><span>Винрейт: <?= $me['wr'] ?>%</span></div>
+        <section class="panel hero tasks-hero">
+            <div class="tasks-hero-main">
+                <p class="muted-label">Прогресс аккаунта</p>
+                <h1>Уровень <?= (int) $levelProgress['level'] ?></h1>
+                <p>Выполняй ежедневные задания, чтобы повышать уровень аккаунта и открывать будущие режимы.</p>
+
+                <div class="level-progress">
+                    <div class="level-progress-top">
+                        <span><?= (int) $levelProgress['into_level'] ?> / <?= (int) $levelProgress['needed_for_next'] ?>
+                            XP</span>
+                        <span><?= (int) $levelProgress['percent'] ?>%</span>
+                    </div>
+                    <div class="level-progress-bar">
+                        <div style="width: <?= (int) $levelProgress['percent'] ?>%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="daily-tasks">
+                <div class="section-head">
+                    <h2>Ежедневные задания</h2>
+                    <small><?= date('d.m.Y') ?></small>
+                </div>
+
+                <?php foreach ($dailyTasks as $task): ?>
+                    <?php
+                    $progress = (int) $task['progress'];
+                    $target = (int) $task['target'];
+                    $done = $progress >= $target;
+                    $claimed = (int) $task['is_claimed'] === 1;
+                    ?>
+
+                    <article class="daily-task-card <?= $done ? 'task-complete' : '' ?>">
+                        <div class="daily-task-info">
+                            <strong><?= h($task['title']) ?></strong>
+                            <small><?= h($task['description']) ?></small>
+
+                            <div class="task-mini-progress">
+                                <span><?= $progress ?>/<?= $target ?></span>
+                                <div>
+                                    <i
+                                        style="width: <?= min(100, (int) round(($progress / max(1, $target)) * 100)) ?>%"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="daily-task-reward">
+                            <span>+<?= (int) $task['xp_reward'] ?> XP</span>
+
+                            <?php if ($claimed): ?>
+                                <b>Получено</b>
+                            <?php elseif ($done): ?>
+                                <form action="task_action.php" method="post">
+                                    <input type="hidden" name="task_id" value="<?= (int) $task['id'] ?>">
+                                    <button class="btn small" type="submit">Забрать</button>
+                                </form>
+                            <?php else: ?>
+                                <b>В процессе</b>
+                            <?php endif; ?>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
         </section>
         <section class="panel" id="incomingInvitesPanel" style="<?= $incomingGameInvites ? '' : 'display:none' ?>">
             <div class="section-head">

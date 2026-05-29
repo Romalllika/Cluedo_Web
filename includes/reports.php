@@ -381,13 +381,34 @@ function report_status_class(string $status): string
     };
 }
 
+function report_decisions(): array
+{
+    return [
+        'confirmed' => 'Подтвердить нарушение',
+        'rejected' => 'Отклонить жалобу',
+        'closed' => 'Закрыть без решения',
+    ];
+}
+
 function report_action_types(): array
 {
     return [
         'none' => 'Без санкции',
         'warning' => 'Предупреждение',
-        'block_create_games_24h' => 'Запрет создавать игры на 24 часа',
-        'block_games_24h' => 'Запрет участвовать в играх на 24 часа',
+        'create_ban' => 'Запрет создавать игры',
+        'game_ban' => 'Запрет участвовать в играх',
+    ];
+}
+
+function report_duration_options(): array
+{
+    return [
+        'none' => 'Без срока',
+        '1h' => '1 час',
+        '24h' => '24 часа',
+        '7d' => '7 дней',
+        '30d' => '30 дней',
+        'permanent' => 'Навсегда',
     ];
 }
 
@@ -398,21 +419,94 @@ function report_action_label(string $actionType): string
     return $types[$actionType] ?? $actionType;
 }
 
+function report_decision_label(string $decision): string
+{
+    $decisions = report_decisions();
+
+    return $decisions[$decision] ?? $decision;
+}
+
+function moderation_duration_label(?int $value, ?string $unit): string
+{
+    if ($unit === 'permanent') {
+        return 'Навсегда';
+    }
+
+    if (!$value || !$unit || $unit === 'none') {
+        return 'Без срока';
+    }
+
+    if ($unit === 'hour') {
+        return $value . ' ч.';
+    }
+
+    if ($unit === 'day') {
+        return $value . ' дн.';
+    }
+
+    return 'Без срока';
+}
+
+function parse_moderation_duration(string $duration): array
+{
+    return match ($duration) {
+        '1h' => [
+            'value' => 1,
+            'unit' => 'hour',
+            'expires_at' => date('Y-m-d H:i:s', time() + 3600),
+            'permanent' => false,
+        ],
+        '24h' => [
+            'value' => 24,
+            'unit' => 'hour',
+            'expires_at' => date('Y-m-d H:i:s', time() + 86400),
+            'permanent' => false,
+        ],
+        '7d' => [
+            'value' => 7,
+            'unit' => 'day',
+            'expires_at' => date('Y-m-d H:i:s', time() + 86400 * 7),
+            'permanent' => false,
+        ],
+        '30d' => [
+            'value' => 30,
+            'unit' => 'day',
+            'expires_at' => date('Y-m-d H:i:s', time() + 86400 * 30),
+            'permanent' => false,
+        ],
+        'permanent' => [
+            'value' => null,
+            'unit' => 'permanent',
+            'expires_at' => null,
+            'permanent' => true,
+        ],
+        default => [
+            'value' => null,
+            'unit' => 'none',
+            'expires_at' => null,
+            'permanent' => false,
+        ],
+    };
+}
+
 function apply_report_decision(
     int $reportId,
     int $moderatorId,
     string $decision,
     string $reviewComment,
-    string $actionType = 'none'
+    string $actionType = 'none',
+    string $duration = 'none'
 ): array {
-    $allowedDecisions = ['reviewing', 'confirmed', 'rejected', 'closed'];
-
-    if (!in_array($decision, $allowedDecisions, true)) {
+    if (!array_key_exists($decision, report_decisions())) {
         return ['error' => 'Некорректное решение по репорту'];
     }
 
     if (!array_key_exists($actionType, report_action_types())) {
         return ['error' => 'Некорректная санкция'];
+    }
+
+    if (!array_key_exists($duration, report_duration_options())) {
+        return ['error' => 'Некорректный срок санкции'];
     }
 
     $report = get_report_by_id($reportId);
@@ -433,25 +527,30 @@ function apply_report_decision(
 
     if ($decision !== 'confirmed') {
         $actionType = 'none';
+        $duration = 'none';
+    }
+
+    if ($actionType === 'warning') {
+        $duration = 'none';
+    }
+
+    if (in_array($actionType, ['create_ban', 'game_ban'], true) && $duration === 'none') {
+        return ['error' => 'Для ограничения нужно выбрать срок'];
     }
 
     $db = db();
     $db->beginTransaction();
 
     try {
-        $reviewedAtSql = in_array($decision, ['confirmed', 'rejected', 'closed'], true)
-            ? ', reviewed_at = NOW()'
-            : '';
-
         $s = $db->prepare(
-            "UPDATE game_reports
+            'UPDATE game_reports
              SET
                 status = ?,
                 reviewer_user_id = ?,
                 review_comment = ?,
-                updated_at = NOW()
-                $reviewedAtSql
-             WHERE id = ?"
+                updated_at = NOW(),
+                reviewed_at = NOW()
+             WHERE id = ?'
         );
 
         $s->execute([
@@ -467,6 +566,7 @@ function apply_report_decision(
                 (int) $report['reported_user_id'],
                 $moderatorId,
                 $actionType,
+                $duration,
                 $reviewComment
             );
         }
@@ -485,26 +585,34 @@ function apply_user_moderation_action(
     int $targetUserId,
     int $moderatorId,
     string $actionType,
+    string $duration,
     string $reason
 ): void {
-    $expiresAt = null;
-
-    if ($actionType === 'block_create_games_24h' || $actionType === 'block_games_24h') {
-        $expiresAt = date('Y-m-d H:i:s', time() + 86400);
-    }
+    $durationData = parse_moderation_duration($duration);
 
     db()->prepare(
         'INSERT INTO user_moderation_actions
-            (report_id, target_user_id, moderator_user_id, action_type, reason, expires_at)
+            (
+                report_id,
+                target_user_id,
+                moderator_user_id,
+                action_type,
+                duration_value,
+                duration_unit,
+                reason,
+                expires_at
+            )
          VALUES
-            (?, ?, ?, ?, ?, ?)'
+            (?, ?, ?, ?, ?, ?, ?, ?)'
     )->execute([
         $reportId,
         $targetUserId,
         $moderatorId,
         $actionType,
+        $durationData['value'],
+        $durationData['unit'],
         $reason,
-        $expiresAt,
+        $durationData['expires_at'],
     ]);
 
     if ($actionType === 'warning') {
@@ -517,53 +625,63 @@ function apply_user_moderation_action(
         return;
     }
 
-    if ($actionType === 'block_create_games_24h') {
+    if ($actionType === 'create_ban') {
+        if ($durationData['permanent']) {
+            db()->prepare(
+                'UPDATE users
+                 SET create_ban_permanent = 1
+                 WHERE id=?'
+            )->execute([$targetUserId]);
+
+            return;
+        }
+
         db()->prepare(
             'UPDATE users
              SET create_blocked_until = GREATEST(
                 COALESCE(create_blocked_until, NOW()),
-                DATE_ADD(NOW(), INTERVAL 1 DAY)
+                ?
              )
              WHERE id=?'
-        )->execute([$targetUserId]);
+        )->execute([
+            $durationData['expires_at'],
+            $targetUserId,
+        ]);
 
         return;
     }
 
-    if ($actionType === 'block_games_24h') {
+    if ($actionType === 'game_ban') {
+        if ($durationData['permanent']) {
+            db()->prepare(
+                'UPDATE users
+                 SET game_ban_permanent = 1
+                 WHERE id=?'
+            )->execute([$targetUserId]);
+
+            return;
+        }
+
         db()->prepare(
             'UPDATE users
              SET game_banned_until = GREATEST(
                 COALESCE(game_banned_until, NOW()),
-                DATE_ADD(NOW(), INTERVAL 1 DAY)
+                ?
              )
              WHERE id=?'
-        )->execute([$targetUserId]);
+        )->execute([
+            $durationData['expires_at'],
+            $targetUserId,
+        ]);
     }
 }
 
 function get_user_game_restriction_message(int $userId): ?string
 {
     $s = db()->prepare(
-        'SELECT game_banned_until
-         FROM users
-         WHERE id=?'
-    );
-    $s->execute([$userId]);
-
-    $until = $s->fetchColumn();
-
-    if ($until && strtotime((string) $until) > time()) {
-        return 'Вам временно запрещено участвовать в играх до ' . $until;
-    }
-
-    return null;
-}
-
-function get_user_create_restriction_message(int $userId): ?string
-{
-    $s = db()->prepare(
-        'SELECT game_banned_until, create_blocked_until
+        'SELECT
+            game_banned_until,
+            game_ban_permanent
          FROM users
          WHERE id=?'
     );
@@ -573,6 +691,44 @@ function get_user_create_restriction_message(int $userId): ?string
 
     if (!$row) {
         return null;
+    }
+
+    if (!empty($row['game_ban_permanent'])) {
+        return 'Вам запрещено участвовать в играх бессрочно.';
+    }
+
+    if (!empty($row['game_banned_until']) && strtotime((string) $row['game_banned_until']) > time()) {
+        return 'Вам временно запрещено участвовать в играх до ' . $row['game_banned_until'];
+    }
+
+    return null;
+}
+
+function get_user_create_restriction_message(int $userId): ?string
+{
+    $s = db()->prepare(
+        'SELECT
+            game_banned_until,
+            create_blocked_until,
+            game_ban_permanent,
+            create_ban_permanent
+         FROM users
+         WHERE id=?'
+    );
+    $s->execute([$userId]);
+
+    $row = $s->fetch();
+
+    if (!$row) {
+        return null;
+    }
+
+    if (!empty($row['game_ban_permanent'])) {
+        return 'Вам запрещено участвовать в играх бессрочно.';
+    }
+
+    if (!empty($row['create_ban_permanent'])) {
+        return 'Вам запрещено создавать игры бессрочно.';
     }
 
     if (!empty($row['game_banned_until']) && strtotime((string) $row['game_banned_until']) > time()) {

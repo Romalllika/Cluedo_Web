@@ -14,13 +14,15 @@ $reportId = (int) ($_POST['report_id'] ?? 0);
 $decision = trim((string) ($_POST['decision'] ?? ''));
 $reviewComment = trim((string) ($_POST['review_comment'] ?? ''));
 $actionType = trim((string) ($_POST['action_type'] ?? 'none'));
+$duration = trim((string) ($_POST['duration'] ?? 'none'));
 
 $result = apply_report_decision(
     $reportId,
     (int) current_user_id(),
     $decision,
     $reviewComment,
-    $actionType
+    $actionType,
+    $duration
 );
 
 if (!empty($result['error'])) {

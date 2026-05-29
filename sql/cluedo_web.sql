@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Хост: localhost
--- Время создания: Май 27 2026 г., 11:46
+-- Время создания: Май 29 2026 г., 05:12
 -- Версия сервера: 8.0.39
 -- Версия PHP: 8.2.23
 
@@ -35,6 +35,13 @@ CREATE TABLE `friend_requests` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Дамп данных таблицы `friend_requests`
+--
+
+INSERT INTO `friend_requests` (`id`, `sender_user_id`, `receiver_user_id`, `status`, `created_at`, `updated_at`) VALUES
+(1, 1, 2, 'cancelled', '2026-05-29 00:05:32', '2026-05-29 00:05:33');
 
 -- --------------------------------------------------------
 
@@ -195,17 +202,71 @@ CREATE TABLE `users` (
   `losses` int NOT NULL DEFAULT '0',
   `surrenders` int NOT NULL DEFAULT '0',
   `wrong_accusations` int NOT NULL DEFAULT '0',
+  `warnings_count` int NOT NULL DEFAULT '0',
+  `create_blocked_until` datetime DEFAULT NULL,
+  `game_banned_until` datetime DEFAULT NULL,
   `games_played` int NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `last_seen_at` datetime DEFAULT NULL
+  `last_seen_at` datetime DEFAULT NULL,
+  `create_ban_permanent` tinyint(1) NOT NULL DEFAULT '0',
+  `game_ban_permanent` tinyint(1) NOT NULL DEFAULT '0',
+  `account_xp` int NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Дамп данных таблицы `users`
 --
 
-INSERT INTO `users` (`id`, `username`, `role`, `password_hash`, `wins`, `losses`, `surrenders`, `wrong_accusations`, `games_played`, `created_at`, `last_seen_at`) VALUES
-(1, 'Romalllika', 'admin', '$2y$10$zFldMeNfUXKYrPzMURl5cOnEdeviqtZoaPFYCvlz.IVxzfvU9EASa', 0, 0, 0, 0, 0, '2026-04-25 13:26:17', '2026-05-27 14:31:30');
+INSERT INTO `users` (`id`, `username`, `role`, `password_hash`, `wins`, `losses`, `surrenders`, `wrong_accusations`, `warnings_count`, `create_blocked_until`, `game_banned_until`, `games_played`, `created_at`, `last_seen_at`, `create_ban_permanent`, `game_ban_permanent`, `account_xp`) VALUES
+(1, 'Romalllika', 'admin', '$2y$10$zFldMeNfUXKYrPzMURl5cOnEdeviqtZoaPFYCvlz.IVxzfvU9EASa', 0, 0, 0, 0, 0, NULL, NULL, 0, '2026-04-25 13:26:17', '2026-05-29 08:12:09', 0, 0, 0);
+
+-- --------------------------------------------------------
+
+--
+-- Структура таблицы `user_daily_tasks`
+--
+
+CREATE TABLE `user_daily_tasks` (
+  `id` int NOT NULL,
+  `user_id` int NOT NULL,
+  `task_key` varchar(80) COLLATE utf8mb4_general_ci NOT NULL,
+  `task_date` date NOT NULL,
+  `progress` int NOT NULL DEFAULT '0',
+  `target` int NOT NULL DEFAULT '1',
+  `xp_reward` int NOT NULL DEFAULT '50',
+  `is_claimed` tinyint(1) NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `completed_at` datetime DEFAULT NULL,
+  `claimed_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Дамп данных таблицы `user_daily_tasks`
+--
+
+INSERT INTO `user_daily_tasks` (`id`, `user_id`, `task_key`, `task_date`, `progress`, `target`, `xp_reward`, `is_claimed`, `created_at`, `completed_at`, `claimed_at`) VALUES
+(1, 1, 'make_1_accusation', '2026-05-29', 0, 1, 90, 0, '2026-05-29 04:48:16', NULL, NULL),
+(2, 1, 'make_3_suggestions', '2026-05-29', 0, 3, 130, 0, '2026-05-29 04:48:16', NULL, NULL),
+(3, 1, 'make_1_suggestion', '2026-05-29', 0, 1, 60, 0, '2026-05-29 04:48:16', NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Структура таблицы `user_moderation_actions`
+--
+
+CREATE TABLE `user_moderation_actions` (
+  `id` int NOT NULL,
+  `report_id` int DEFAULT NULL,
+  `target_user_id` int NOT NULL,
+  `moderator_user_id` int NOT NULL,
+  `action_type` varchar(50) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'none',
+  `duration_value` int DEFAULT NULL,
+  `duration_unit` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `reason` text COLLATE utf8mb4_general_ci,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `expires_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Индексы сохранённых таблиц
@@ -291,6 +352,25 @@ ALTER TABLE `users`
   ADD UNIQUE KEY `username` (`username`);
 
 --
+-- Индексы таблицы `user_daily_tasks`
+--
+ALTER TABLE `user_daily_tasks`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uniq_user_task_day` (`user_id`,`task_key`,`task_date`),
+  ADD KEY `idx_user_daily_tasks_user_day` (`user_id`,`task_date`),
+  ADD KEY `idx_user_daily_tasks_claimed` (`is_claimed`);
+
+--
+-- Индексы таблицы `user_moderation_actions`
+--
+ALTER TABLE `user_moderation_actions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_moderation_target` (`target_user_id`),
+  ADD KEY `idx_moderation_moderator` (`moderator_user_id`),
+  ADD KEY `idx_moderation_report` (`report_id`),
+  ADD KEY `idx_moderation_action_type` (`action_type`);
+
+--
 -- AUTO_INCREMENT для сохранённых таблиц
 --
 
@@ -298,19 +378,19 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT для таблицы `friend_requests`
 --
 ALTER TABLE `friend_requests`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT для таблицы `games`
 --
 ALTER TABLE `games`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
 
 --
 -- AUTO_INCREMENT для таблицы `game_character_positions`
 --
 ALTER TABLE `game_character_positions`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21033;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21375;
 
 --
 -- AUTO_INCREMENT для таблицы `game_invites`
@@ -328,7 +408,7 @@ ALTER TABLE `game_logs`
 -- AUTO_INCREMENT для таблицы `game_players`
 --
 ALTER TABLE `game_players`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
 -- AUTO_INCREMENT для таблицы `game_reports`
@@ -346,7 +426,19 @@ ALTER TABLE `player_cards`
 -- AUTO_INCREMENT для таблицы `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT для таблицы `user_daily_tasks`
+--
+ALTER TABLE `user_daily_tasks`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT для таблицы `user_moderation_actions`
+--
+ALTER TABLE `user_moderation_actions`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- Ограничения внешнего ключа сохраненных таблиц

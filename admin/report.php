@@ -19,6 +19,8 @@ $snapshotGame = $snapshot['game'] ?? [];
 $snapshotPlayers = $snapshot['players'] ?? [];
 $snapshotLogs = $snapshot['recent_logs'] ?? [];
 
+$moderationActions = get_user_moderation_actions((int) $report['reported_user_id'], 8);
+
 $flashSuccess = $_SESSION['flash_success'] ?? '';
 $flashError = $_SESSION['flash_error'] ?? '';
 
@@ -36,30 +38,34 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
 </head>
 
 <body>
-    <header class="top">
-        <b>🛡️ Репорт #<?= (int) $report['id'] ?></b>
-        <nav>
-            <a href="../lobby.php">Лобби</a>
-            <a href="reports.php">Репорты</a>
-            <a href="index.php">Админка</a>
-            <a href="../logout.php">Выход</a>
-        </nav>
-    </header>
+<header class="top">
+    <b>🛡️ Репорт #<?= (int) $report['id'] ?></b>
+    <nav>
+        <a href="../lobby.php">Лобби</a>
+        <a href="reports.php">Репорты</a>
+        <a href="index.php">Админка</a>
+        <a href="../logout.php">Выход</a>
+    </nav>
+</header>
 
-    <main class="layout">
-        <?php if ($flashSuccess): ?>
-            <section class="panel flash flash-success">
-                <?= h($flashSuccess) ?>
-            </section>
-        <?php endif; ?>
+<main class="layout admin-layout">
+    <?php if ($flashSuccess): ?>
+        <section class="panel flash flash-success">
+            <?= h($flashSuccess) ?>
+        </section>
+    <?php endif; ?>
 
-        <?php if ($flashError): ?>
-            <section class="panel flash flash-error">
-                <?= h($flashError) ?>
-            </section>
-        <?php endif; ?>
-        <section class="panel hero">
-            <h1>Проверка репорта #<?= (int) $report['id'] ?></h1>
+    <?php if ($flashError): ?>
+        <section class="panel flash flash-error">
+            <?= h($flashError) ?>
+        </section>
+    <?php endif; ?>
+
+    <section class="panel hero admin-report-hero">
+        <div>
+            <p class="muted-label">Проверка жалобы</p>
+            <h1>Репорт #<?= (int) $report['id'] ?></h1>
+
             <p>
                 <a href="../profile.php?id=<?= (int) $report['reporter_user_id'] ?>">
                     <?= h($report['reporter_username']) ?>
@@ -71,269 +77,346 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
                 в матче
                 <b><?= h($report['game_title']) ?></b>.
             </p>
+        </div>
 
-            <p>
-                <span class="status-pill <?= h(report_status_class($report['status'])) ?>">
-                    <?= h(report_status_label($report['status'])) ?>
-                </span>
-            </p>
-        </section>
+        <div class="admin-report-hero-side">
+            <span class="status-pill <?= h(report_status_class($report['status'])) ?>">
+                <?= h(report_status_label($report['status'])) ?>
+            </span>
 
-        <section class="grid2">
-            <div class="panel">
-                <h2>Данные репорта</h2>
+            <small>Создан: <?= h($report['created_at']) ?></small>
 
-                <dl class="admin-dl">
-                    <dt>ID</dt>
-                    <dd>#<?= (int) $report['id'] ?></dd>
+            <?php if (!empty($report['reviewer_username'])): ?>
+                <small>Решение: <?= h($report['reviewer_username']) ?></small>
+            <?php endif; ?>
+        </div>
+    </section>
 
-                    <dt>Матч</dt>
-                    <dd>
-                        <?= h($report['game_title']) ?>
-                        <br>
-                        <small>Матч #<?= (int) $report['game_id'] ?></small>
-                    </dd>
+    <section class="grid2 admin-report-main-grid">
+        <div class="panel">
+            <h2>Жалоба игрока</h2>
 
-                    <dt>Отправитель</dt>
-                    <dd>
+            <div class="admin-report-facts">
+                <article>
+                    <small>Причина</small>
+                    <strong><?= h(report_reason_label($report['reason'])) ?></strong>
+                </article>
+
+                <article>
+                    <small>Отправитель</small>
+                    <strong>
                         <a href="../profile.php?id=<?= (int) $report['reporter_user_id'] ?>">
                             <?= h($report['reporter_username']) ?>
                         </a>
-                    </dd>
+                    </strong>
+                </article>
 
-                    <dt>Нарушитель</dt>
-                    <dd>
+                <article>
+                    <small>Обвиняемый</small>
+                    <strong>
                         <a href="../profile.php?id=<?= (int) $report['reported_user_id'] ?>">
                             <?= h($report['reported_username']) ?>
                         </a>
-                    </dd>
+                    </strong>
+                </article>
 
-                    <dt>Причина</dt>
-                    <dd><?= h(report_reason_label($report['reason'])) ?></dd>
-
-                    <dt>Комментарий игрока</dt>
-                    <dd><?= nl2br(h($report['comment'] ?: '—')) ?></dd>
-
-                    <dt>Создан</dt>
-                    <dd><?= h($report['created_at']) ?></dd>
-
-                    <dt>Обновлён</dt>
-                    <dd><?= h($report['updated_at']) ?></dd>
-
-                    <dt>Модератор</dt>
-                    <dd><?= h($report['reviewer_username'] ?: '—') ?></dd>
-
-                    <dt>Комментарий проверки</dt>
-                    <dd><?= nl2br(h($report['review_comment'] ?: '—')) ?></dd>
-                </dl>
+                <article>
+                    <small>Матч</small>
+                    <strong>#<?= (int) $report['game_id'] ?></strong>
+                </article>
             </div>
 
-            <div class="panel">
-                <h2>Снимок матча</h2>
-
-                <?php if (!$snapshotGame): ?>
-                    <p>Snapshot отсутствует или не читается.</p>
-                <?php else: ?>
-                    <dl class="admin-dl">
-                        <dt>Захвачен</dt>
-                        <dd><?= h($snapshot['captured_at'] ?? '—') ?></dd>
-
-                        <dt>Статус</dt>
-                        <dd><?= h($snapshotGame['status'] ?? '—') ?></dd>
-
-                        <dt>Фаза</dt>
-                        <dd><?= h($snapshotGame['phase'] ?? '—') ?></dd>
-
-                        <dt>Текущий игрок ID</dt>
-                        <dd><?= h($snapshotGame['current_turn_player_id'] ?? '—') ?></dd>
-
-                        <dt>Карта</dt>
-                        <dd><?= h($snapshotGame['map_id'] ?? '—') ?></dd>
-
-                        <dt>Бросок кубиков</dt>
-                        <dd><?= h($snapshotGame['dice_total'] ?? '—') ?></dd>
-
-                        <dt>Начало фазы</dt>
-                        <dd><?= h($snapshotGame['phase_started_at'] ?? '—') ?></dd>
-                    </dl>
-
-                    <p>
-                        <a class="btn" href="../game.php?id=<?= (int) $report['game_id'] ?>">Открыть матч</a>
-                    </p>
-                <?php endif; ?>
+            <div class="admin-comment-box">
+                <small>Комментарий игрока</small>
+                <p><?= nl2br(h($report['comment'] ?: 'Комментарий не указан.')) ?></p>
             </div>
-        </section>
 
-        <section class="panel">
-            <h2>Игроки на момент репорта</h2>
-
-            <?php if (!$snapshotPlayers): ?>
-                <p>Нет данных по игрокам.</p>
-            <?php else: ?>
-                <div class="table-wrap">
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Игрок</th>
-                                <th>Персонаж</th>
-                                <th>Место</th>
-                                <th>Порядок</th>
-                                <th>Позиция</th>
-                                <th>Выбыл</th>
-                                <th>AFK</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($snapshotPlayers as $p): ?>
-                                <?php
-                                $isReported = (int) ($p['user_id'] ?? 0) === (int) $report['reported_user_id'];
-                                $isReporter = (int) ($p['user_id'] ?? 0) === (int) $report['reporter_user_id'];
-                                ?>
-                                <tr class="<?= $isReported ? 'row-danger' : ($isReporter ? 'row-info' : '') ?>">
-                                    <td><?= (int) ($p['user_id'] ?? 0) ?></td>
-                                    <td>
-                                        <?= h($p['username'] ?? '—') ?>
-                                        <?php if ($isReporter): ?>
-                                            <br><small>отправитель</small>
-                                        <?php endif; ?>
-                                        <?php if ($isReported): ?>
-                                            <br><small>обвиняемый</small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td><?= h($p['character_name'] ?? '—') ?></td>
-                                    <td><?= h($p['seat_no'] ?? '—') ?></td>
-                                    <td><?= h($p['turn_order'] ?? '—') ?></td>
-                                    <td>
-                                        <?= h($p['pos_x'] ?? '—') ?>,
-                                        <?= h($p['pos_y'] ?? '—') ?>
-                                    </td>
-                                    <td><?= !empty($p['is_eliminated']) ? 'Да' : 'Нет' ?></td>
-                                    <td><?= (int) ($p['afk_misses'] ?? 0) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+            <?php if (!empty($report['review_comment'])): ?>
+                <div class="admin-comment-box">
+                    <small>Последний комментарий модератора</small>
+                    <p><?= nl2br(h($report['review_comment'])) ?></p>
                 </div>
             <?php endif; ?>
-        </section>
+        </div>
 
-        <section class="grid2">
-            <div class="panel">
-                <h2>Последние логи матча</h2>
+        <div class="panel">
+            <h2>Решение модератора</h2>
 
-                <?php if (!$snapshotLogs): ?>
-                    <p>Логов в snapshot нет.</p>
-                <?php else: ?>
-                    <div class="admin-log-list">
-                        <?php foreach ($snapshotLogs as $log): ?>
-                            <article class="admin-log-item">
-                                <small>
-                                    #<?= (int) ($log['id'] ?? 0) ?>
-                                    ·
-                                    <?= h($log['created_at'] ?? '') ?>
-                                    ·
-                                    <?= h($log['username'] ?? 'Система') ?>
-                                </small>
-                                <p><?= h($log['message'] ?? '') ?></p>
-                            </article>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
-            </div>
+            <form action="report_action.php" method="post" class="moderation-final-form" id="moderationDecisionForm">
+                <input type="hidden" name="report_id" value="<?= (int) $report['id'] ?>">
 
-            <div class="panel">
-                <h2>Решение модератора</h2>
+                <label>
+                    Итоговое решение
+                    <select name="decision" id="moderationDecisionSelect" required>
+                        <option value="confirmed" <?= $report['status'] === 'confirmed' ? 'selected' : '' ?>>
+                            Подтвердить нарушение
+                        </option>
+                        <option value="rejected" <?= $report['status'] === 'rejected' ? 'selected' : '' ?>>
+                            Отклонить жалобу
+                        </option>
+                        <option value="closed" <?= $report['status'] === 'closed' ? 'selected' : '' ?>>
+                            Закрыть без решения
+                        </option>
+                    </select>
+                </label>
 
-                <div class="moderation-current-state">
-                    <span class="status-pill <?= h(report_status_class($report['status'])) ?>">
-                        <?= h(report_status_label($report['status'])) ?>
-                    </span>
-
-                    <?php if (!empty($report['reviewer_username'])): ?>
-                        <small>Последнее решение: <?= h($report['reviewer_username']) ?></small>
-                    <?php endif; ?>
-                </div>
-
-                <?php if ($report['status'] === 'open'): ?>
-                    <form action="report_action.php" method="post" class="moderation-decision-card">
-                        <input type="hidden" name="report_id" value="<?= (int) $report['id'] ?>">
-                        <input type="hidden" name="decision" value="reviewing">
-                        <input type="hidden" name="action_type" value="none">
-                        <input type="hidden" name="review_comment" value="<?= h($report['review_comment'] ?? '') ?>">
-
-                        <h3>Первый шаг</h3>
-                        <p>Пометь репорт как взятый в проверку. Это покажет другим модераторам, что репорт уже
-                            обрабатывается.</p>
-
-                        <button type="submit" class="btn">Взять в проверку</button>
-                    </form>
-                <?php endif; ?>
-
-                <form action="report_action.php" method="post" class="moderation-decision-card danger-zone">
-                    <input type="hidden" name="report_id" value="<?= (int) $report['id'] ?>">
-                    <input type="hidden" name="decision" value="confirmed">
-
-                    <h3>Подтвердить нарушение</h3>
-                    <p>Используй этот вариант только если по snapshot, логам и контексту матча нарушение действительно
-                        подтверждается.</p>
-
+                <div class="moderation-sanction-box" id="moderationSanctionBox">
                     <label>
-                        Последствие для игрока
-                        <select name="action_type">
+                        Санкция
+                        <select name="action_type" id="moderationActionSelect">
+                            <option value="none">Без санкции</option>
                             <option value="warning">Предупреждение</option>
-                            <option value="block_create_games_24h">Запрет создавать игры на 24 часа</option>
-                            <option value="block_games_24h">Запрет участвовать в играх на 24 часа</option>
-                            <option value="none">Подтвердить без санкции</option>
+                            <option value="create_ban">Запрет создавать игры</option>
+                            <option value="game_ban">Запрет участвовать в играх</option>
                         </select>
                     </label>
 
-                    <label>
-                        Комментарий модератора
-                        <textarea name="review_comment" rows="6" maxlength="2000" required
-                            placeholder="Что именно подтверждено и почему выбрано это последствие"><?= h($report['review_comment'] ?? '') ?></textarea>
+                    <label id="moderationDurationLabel">
+                        Срок ограничения
+                        <select name="duration" id="moderationDurationSelect">
+                            <option value="none">Без срока</option>
+                            <option value="1h">1 час</option>
+                            <option value="24h">24 часа</option>
+                            <option value="7d">7 дней</option>
+                            <option value="30d">30 дней</option>
+                            <option value="permanent">Навсегда</option>
+                        </select>
                     </label>
+                </div>
 
-                    <button type="submit" class="danger-btn">Подтвердить нарушение</button>
-                </form>
+                <label>
+                    Комментарий модератора
+                    <textarea
+                        name="review_comment"
+                        rows="7"
+                        maxlength="2000"
+                        placeholder="Кратко объясни решение: что подтвердилось, что видно по логам, почему выбрана санкция."
+                    ><?= h($report['review_comment'] ?? '') ?></textarea>
+                </label>
 
-                <form action="report_action.php" method="post" class="moderation-decision-card">
-                    <input type="hidden" name="report_id" value="<?= (int) $report['id'] ?>">
-                    <input type="hidden" name="decision" value="rejected">
-                    <input type="hidden" name="action_type" value="none">
+                <div class="moderation-help" id="moderationHelpText">
+                    При подтверждении нарушения можно выбрать санкцию. При отклонении или закрытии санкция не применяется.
+                </div>
 
-                    <h3>Отклонить репорт</h3>
-                    <p>Если нарушение не подтверждается, закрой репорт как отклонённый. Санкции к игроку применены не
-                        будут.</p>
+                <button type="submit" class="btn primary-action">Сохранить решение</button>
+            </form>
+        </div>
+    </section>
 
-                    <label>
-                        Комментарий модератора
-                        <textarea name="review_comment" rows="5" maxlength="2000"
-                            placeholder="Почему нарушение не подтверждено"><?= h($report['review_comment'] ?? '') ?></textarea>
-                    </label>
+    <section class="panel">
+        <div class="section-head">
+            <h2>Снимок матча</h2>
+            <a class="btn small" href="../game.php?id=<?= (int) $report['game_id'] ?>">Открыть матч</a>
+        </div>
 
-                    <button type="submit" class="btn">Отклонить репорт</button>
-                </form>
+        <?php if (!$snapshotGame): ?>
+            <p>Snapshot отсутствует или не читается.</p>
+        <?php else: ?>
+            <div class="admin-snapshot-grid">
+                <article>
+                    <small>Захвачен</small>
+                    <strong><?= h($snapshot['captured_at'] ?? '—') ?></strong>
+                </article>
 
-                <form action="report_action.php" method="post" class="moderation-decision-card">
-                    <input type="hidden" name="report_id" value="<?= (int) $report['id'] ?>">
-                    <input type="hidden" name="decision" value="closed">
-                    <input type="hidden" name="action_type" value="none">
+                <article>
+                    <small>Статус</small>
+                    <strong><?= h($snapshotGame['status'] ?? '—') ?></strong>
+                </article>
 
-                    <h3>Закрыть без решения</h3>
-                    <p>Для дублей, ошибочных жалоб, устаревших репортов или случаев, где решение не требуется.</p>
+                <article>
+                    <small>Фаза</small>
+                    <strong><?= h($snapshotGame['phase'] ?? '—') ?></strong>
+                </article>
 
-                    <label>
-                        Комментарий модератора
-                        <textarea name="review_comment" rows="4" maxlength="2000"
-                            placeholder="Причина закрытия"><?= h($report['review_comment'] ?? '') ?></textarea>
-                    </label>
+                <article>
+                    <small>Текущий игрок ID</small>
+                    <strong><?= h($snapshotGame['current_turn_player_id'] ?? '—') ?></strong>
+                </article>
 
-                    <button type="submit" class="btn">Закрыть репорт</button>
-                </form>
+                <article>
+                    <small>Карта</small>
+                    <strong><?= h($snapshotGame['map_id'] ?? '—') ?></strong>
+                </article>
+
+                <article>
+                    <small>Кубики</small>
+                    <strong><?= h($snapshotGame['dice_total'] ?? '—') ?></strong>
+                </article>
             </div>
-        </section>
-    </main>
-</body>
+        <?php endif; ?>
+    </section>
 
+    <section class="panel">
+        <h2>Игроки на момент репорта</h2>
+
+        <?php if (!$snapshotPlayers): ?>
+            <p>Нет данных по игрокам.</p>
+        <?php else: ?>
+            <div class="table-wrap">
+                <table class="admin-table">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Игрок</th>
+                        <th>Персонаж</th>
+                        <th>Место</th>
+                        <th>Порядок</th>
+                        <th>Позиция</th>
+                        <th>Выбыл</th>
+                        <th>AFK</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($snapshotPlayers as $p): ?>
+                        <?php
+                        $isReported = (int) ($p['user_id'] ?? 0) === (int) $report['reported_user_id'];
+                        $isReporter = (int) ($p['user_id'] ?? 0) === (int) $report['reporter_user_id'];
+                        ?>
+                        <tr class="<?= $isReported ? 'row-danger' : ($isReporter ? 'row-info' : '') ?>">
+                            <td><?= (int) ($p['user_id'] ?? 0) ?></td>
+                            <td>
+                                <a href="../profile.php?id=<?= (int) ($p['user_id'] ?? 0) ?>">
+                                    <?= h($p['username'] ?? '—') ?>
+                                </a>
+
+                                <?php if ($isReporter): ?>
+                                    <br><small>отправитель</small>
+                                <?php endif; ?>
+
+                                <?php if ($isReported): ?>
+                                    <br><small>обвиняемый</small>
+                                <?php endif; ?>
+                            </td>
+                            <td><?= h($p['character_name'] ?? '—') ?></td>
+                            <td><?= h($p['seat_no'] ?? '—') ?></td>
+                            <td><?= h($p['turn_order'] ?? '—') ?></td>
+                            <td>
+                                <?= h($p['pos_x'] ?? '—') ?>,
+                                <?= h($p['pos_y'] ?? '—') ?>
+                            </td>
+                            <td><?= !empty($p['is_eliminated']) ? 'Да' : 'Нет' ?></td>
+                            <td><?= (int) ($p['afk_misses'] ?? 0) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
+    </section>
+
+    <section class="grid2">
+        <div class="panel">
+            <h2>Последние логи матча</h2>
+
+            <?php if (!$snapshotLogs): ?>
+                <p>Логов в snapshot нет.</p>
+            <?php else: ?>
+                <div class="admin-log-list">
+                    <?php foreach ($snapshotLogs as $log): ?>
+                        <article class="admin-log-item">
+                            <small>
+                                #<?= (int) ($log['id'] ?? 0) ?>
+                                · <?= h($log['created_at'] ?? '') ?>
+                                · <?= h($log['username'] ?? 'Система') ?>
+                            </small>
+                            <p><?= h($log['message'] ?? '') ?></p>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <div class="panel">
+            <h2>История санкций игрока</h2>
+
+            <?php if (!$moderationActions): ?>
+                <p>По этому игроку пока нет санкций.</p>
+            <?php else: ?>
+                <div class="admin-log-list">
+                    <?php foreach ($moderationActions as $action): ?>
+                        <article class="admin-log-item">
+                            <small>
+                                <?= h($action['created_at']) ?>
+                                · <?= h($action['moderator_username']) ?>
+                                <?php if (!empty($action['report_id'])): ?>
+                                    · Репорт #<?= (int) $action['report_id'] ?>
+                                <?php endif; ?>
+                            </small>
+
+                            <p>
+                                <b><?= h(report_action_label($action['action_type'])) ?></b>
+                                <br>
+                                Срок:
+                                <?= h(moderation_duration_label(
+                                    isset($action['duration_value']) ? (int) $action['duration_value'] : null,
+                                    $action['duration_unit'] ?? null
+                                )) ?>
+
+                                <?php if (!empty($action['expires_at'])): ?>
+                                    · До <?= h($action['expires_at']) ?>
+                                <?php endif; ?>
+                            </p>
+
+                            <?php if (!empty($action['reason'])): ?>
+                                <p><?= nl2br(h($action['reason'])) ?></p>
+                            <?php endif; ?>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    </section>
+</main>
+
+<script>
+(function () {
+    const decisionSelect = document.querySelector('#moderationDecisionSelect');
+    const actionSelect = document.querySelector('#moderationActionSelect');
+    const sanctionBox = document.querySelector('#moderationSanctionBox');
+    const durationLabel = document.querySelector('#moderationDurationLabel');
+    const durationSelect = document.querySelector('#moderationDurationSelect');
+    const helpText = document.querySelector('#moderationHelpText');
+
+    if (!decisionSelect || !actionSelect || !sanctionBox || !durationLabel || !durationSelect || !helpText) {
+        return;
+    }
+
+    function syncModerationForm() {
+        const decision = decisionSelect.value;
+        const action = actionSelect.value;
+        const isConfirmed = decision === 'confirmed';
+        const isTimedBan = action === 'create_ban' || action === 'game_ban';
+
+        sanctionBox.style.display = isConfirmed ? 'grid' : 'none';
+        durationLabel.style.display = isConfirmed && isTimedBan ? 'grid' : 'none';
+
+        if (!isConfirmed) {
+            actionSelect.value = 'none';
+            durationSelect.value = 'none';
+            helpText.textContent = 'Санкция не применяется, потому что нарушение не подтверждается.';
+            return;
+        }
+
+        if (action === 'none') {
+            durationSelect.value = 'none';
+            helpText.textContent = 'Репорт будет подтверждён, но без наказания игрока.';
+            return;
+        }
+
+        if (action === 'warning') {
+            durationSelect.value = 'none';
+            helpText.textContent = 'Игрок получит предупреждение. Ограничений на игру не будет.';
+            return;
+        }
+
+        helpText.textContent = 'Выбери срок ограничения. На это время игрок не сможет выполнять выбранное действие.';
+    }
+
+    decisionSelect.addEventListener('change', syncModerationForm);
+    actionSelect.addEventListener('change', syncModerationForm);
+
+    syncModerationForm();
+})();
+</script>
+</body>
 </html>

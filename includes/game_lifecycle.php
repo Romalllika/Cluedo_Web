@@ -116,6 +116,10 @@ function apply_game_stats_once(int $gid, ?int $winnerId): void
                      wins = wins + 1
                  WHERE id=?'
             )->execute([$pid]);
+
+            if (function_exists('progress_daily_task')) {
+                progress_daily_task($pid, 'win_1_game');
+            }
         } else {
             $db->prepare(
                 'UPDATE users
@@ -123,6 +127,13 @@ function apply_game_stats_once(int $gid, ?int $winnerId): void
                      losses = losses + 1
                  WHERE id=?'
             )->execute([$pid]);
+        }
+
+        if (function_exists('progress_daily_tasks_bulk')) {
+            progress_daily_tasks_bulk($pid, [
+                'play_1_game',
+                'play_2_games',
+            ]);
         }
     }
 

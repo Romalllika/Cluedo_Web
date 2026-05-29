@@ -20,6 +20,7 @@ function get_profile_user(int $userId): ?array
             losses,
             games_played,
             surrenders,
+            account_xp,
             wrong_accusations,
             created_at,
             last_seen_at

@@ -5,6 +5,7 @@ require 'includes/profile.php';
 require 'includes/reports.php';
 require 'includes/friends.php';
 require 'includes/invites.php';
+require 'includes/progression.php';
 
 $notificationsFile = __DIR__ . '/includes/notifications.php';
 if (is_file($notificationsFile)) {
@@ -28,6 +29,9 @@ if (!$user) {
     echo 'Пользователь не найден';
     exit;
 }
+
+$profileXp = (int) ($user['account_xp'] ?? 0);
+$profileLevel = account_level_progress($profileXp);
 
 $isMe = $viewerId === (int) $user['id'];
 $isModerator = user_is_moderator_or_admin($viewerId);
@@ -70,7 +74,10 @@ if ($isMe) {
         ['label' => 'Общих матчей', 'value' => (int) $commonMatches],
     ];
 }
-
+array_unshift($profileHeaderCounts, [
+    'label' => 'Уровень',
+    'value' => (int) $profileLevel['level'],
+]);
 ?>
 <!doctype html>
 <html lang="ru">

@@ -1374,3 +1374,411 @@ td small { color: var(--muted); }
     min-width: calc(50% - 4px);
   }
 }
+
+
+.moderation-current-state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.moderation-current-state small {
+  opacity: .7;
+}
+
+.moderation-last-comment {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  margin-bottom: 14px;
+}
+
+.moderation-last-comment p {
+  margin: 6px 0 0;
+  opacity: .82;
+}
+
+.moderation-final-form {
+  display: grid;
+  gap: 14px;
+}
+
+.moderation-final-form label {
+  display: grid;
+  gap: 6px;
+  font-weight: 800;
+}
+
+.moderation-final-form select,
+.moderation-final-form textarea {
+  width: 100%;
+}
+
+.moderation-sanction-box {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.12);
+}
+
+.moderation-help {
+  opacity: .72;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.primary-action {
+  width: fit-content;
+}
+
+/* Admin reports cleanup */
+.admin-layout {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-hero,
+.admin-report-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 22px;
+}
+
+.admin-report-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(82px, 1fr));
+  gap: 10px;
+  min-width: min(480px, 100%);
+}
+
+.admin-report-summary article,
+.admin-snapshot-grid article,
+.admin-report-facts article {
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.055);
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.admin-report-summary small,
+.admin-snapshot-grid small,
+.admin-report-facts small {
+  display: block;
+  opacity: .7;
+  margin-bottom: 6px;
+}
+
+.admin-report-summary strong {
+  font-size: 24px;
+}
+
+.admin-filter-panel {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.admin-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-filters .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-filters .btn span {
+  opacity: .8;
+  font-size: 13px;
+}
+
+.admin-filters .active {
+  outline: 2px solid rgba(255,255,255,.42);
+}
+
+.admin-report-list {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-report-card {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(120px, auto) auto;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.05);
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.admin-report-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.admin-report-card p {
+  margin: 0 0 6px;
+}
+
+.admin-report-card small {
+  opacity: .72;
+}
+
+.admin-report-card-meta {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-report-card-meta small {
+  opacity: .65;
+}
+
+.admin-report-hero-side {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  min-width: 180px;
+}
+
+.admin-report-hero-side small {
+  opacity: .72;
+}
+
+.admin-report-main-grid {
+  align-items: start;
+}
+
+.admin-report-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.admin-comment-box {
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.045);
+  border-radius: 16px;
+  padding: 14px;
+  margin-top: 12px;
+}
+
+.admin-comment-box small {
+  display: block;
+  opacity: .7;
+  margin-bottom: 8px;
+}
+
+.admin-comment-box p {
+  margin: 0;
+}
+
+.admin-snapshot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.moderation-final-form {
+  display: grid;
+  gap: 14px;
+}
+
+.moderation-final-form label {
+  display: grid;
+  gap: 6px;
+  font-weight: 800;
+}
+
+.moderation-final-form select,
+.moderation-final-form textarea {
+  width: 100%;
+}
+
+.moderation-sanction-box {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.12);
+}
+
+.moderation-help {
+  opacity: .72;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.primary-action {
+  width: fit-content;
+}
+
+@media (max-width: 900px) {
+  .admin-hero,
+  .admin-report-hero {
+    flex-direction: column;
+  }
+
+  .admin-report-summary {
+    grid-template-columns: repeat(2, minmax(82px, 1fr));
+    min-width: 0;
+    width: 100%;
+  }
+
+  .admin-report-card {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-report-hero-side {
+    justify-items: start;
+  }
+
+  .admin-report-facts,
+  .admin-snapshot-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tasks-hero {
+  display: grid;
+  grid-template-columns: minmax(260px, .85fr) minmax(320px, 1.15fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.tasks-hero-main h1 {
+  margin-bottom: 8px;
+}
+
+.level-progress {
+  margin-top: 18px;
+}
+
+.level-progress-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.level-progress-bar {
+  height: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.12);
+}
+
+.level-progress-bar div {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(255,255,255,.55), rgba(255,255,255,.22));
+}
+
+.daily-tasks {
+  display: grid;
+  gap: 10px;
+}
+
+.daily-task-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.055);
+  border: 1px solid rgba(255,255,255,.12);
+}
+
+.daily-task-card.task-complete {
+  border-color: rgba(90, 220, 130, .35);
+  background: rgba(90, 220, 130, .08);
+}
+
+.daily-task-info {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.daily-task-info small {
+  opacity: .72;
+}
+
+.daily-task-reward {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  min-width: 92px;
+}
+
+.daily-task-reward span {
+  font-weight: 900;
+}
+
+.daily-task-reward b {
+  opacity: .7;
+  font-size: 13px;
+}
+
+.daily-task-reward form {
+  margin: 0;
+}
+
+.task-mini-progress {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.task-mini-progress span {
+  font-size: 12px;
+  opacity: .75;
+}
+
+.task-mini-progress div {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.10);
+}
+
+.task-mini-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: rgba(255,255,255,.5);
+}
+
+@media (max-width: 900px) {
+  .tasks-hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .daily-task-card {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-task-reward {
+    justify-items: start;
+  }
+}
