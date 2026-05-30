@@ -1,6 +1,7 @@
 <?php require 'includes/config.php';
 require_auth();
 require 'includes/maps.php';
+require 'includes/map_settings.php';
 require 'includes/reports.php';
 require 'includes/profile.php';
 require 'includes/invites.php';
@@ -25,7 +26,8 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
 $u = db()->prepare('SELECT *, ROUND(IF(games_played=0,0,wins/games_played*100),1) AS wr FROM users WHERE id=?');
 $u->execute([$uid]);
 $me = $u->fetch();
-$maps = available_maps();
+$maps = selectable_maps_for_user((int) $uid);
+$selectedMap = reset($maps) ?: null;
 $games = db()->query("SELECT g.*, u.username owner, COUNT(gp.id) players FROM games g JOIN users u ON u.id=g.owner_id LEFT JOIN game_players gp ON gp.game_id=g.id WHERE g.status<>'finished' GROUP BY g.id ORDER BY g.created_at DESC")->fetchAll();
 $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_played=0,0,wins/games_played*100),1) wr FROM users ORDER BY wr DESC,wins DESC LIMIT 10")->fetchAll();
 ?>
@@ -184,15 +186,29 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
                         <option selected>6</option>
                     </select>
 
-                    <select name="map_id">
-                        <?php foreach (available_maps() as $map): ?>
-                            <option value="<?= h($map['id']) ?>">
-                                <?= h($map['title']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <input type="hidden" name="map_id" id="selectedMapInput" value="<?= h($selectedMap['id'] ?? '') ?>">
 
-                    <button>Создать</button>
+                    <div class="map-picker-field">
+                        <div class="selected-map-card" id="selectedMapCard">
+                            <?php if ($selectedMap): ?>
+                                <strong id="selectedMapTitle"><?= h($selectedMap['title']) ?></strong>
+                                <span id="selectedMapMeta">
+                                    <?= h($selectedMap['category_label']) ?> ·
+                                    <?= (int) $selectedMap['meta']['rooms_count'] ?> комнат ·
+                                    до <?= (int) $selectedMap['meta']['players_count'] ?> игроков
+                                </span>
+                            <?php else: ?>
+                                <strong id="selectedMapTitle">Нет доступных карт</strong>
+                                <span id="selectedMapMeta">Администратор должен включить хотя бы одну карту.</span>
+                            <?php endif; ?>
+                        </div>
+
+                        <button type="button" class="btn" id="openMapPickerBtn" <?= !$maps ? 'disabled' : '' ?>>
+                            Выбрать карту
+                        </button>
+                    </div>
+
+                    <button <?= !$maps ? 'disabled' : '' ?>>Создать</button>
                 </form>
             </div>
             <div class="panel">
@@ -204,6 +220,43 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
                             <td><?= $l['wins'] ?>W / <?= $l['losses'] ?>L</td>
                         </tr><?php endforeach; ?>
                 </table>
+            </div>
+            <div class="modal" id="mapPickerModal">
+                <div class="modal-box map-picker-modal">
+                    <div class="modal-head">
+                        <h2>Выбор карты</h2>
+                        <button type="button" id="closeMapPickerBtn">×</button>
+                    </div>
+
+                    <div class="map-picker-grid">
+                        <?php foreach ($maps as $map): ?>
+                            <article class="map-choice-card" data-map-id="<?= h($map['id']) ?>"
+                                data-map-title="<?= h($map['title']) ?>"
+                                data-map-meta="<?= h($map['category_label'] . ' · ' . (int) $map['meta']['rooms_count'] . ' комнат · до ' . (int) $map['meta']['players_count'] . ' игроков') ?>">
+                                <div class="map-choice-top">
+                                    <strong><?= h($map['title']) ?></strong>
+                                    <span class="status-pill <?= h(map_category_class($map['category'])) ?>">
+                                        <?= h($map['category_label']) ?>
+                                    </span>
+                                </div>
+
+                                <?php if (!empty($map['description'])): ?>
+                                    <p><?= h($map['description']) ?></p>
+                                <?php else: ?>
+                                    <p>Карта для партии Mystery Mansion.</p>
+                                <?php endif; ?>
+
+                                <small>
+                                    <?= (int) $map['meta']['rooms_count'] ?> комнат ·
+                                    до <?= (int) $map['meta']['players_count'] ?> игроков ·
+                                    <?= (int) $map['meta']['board_w'] ?>×<?= (int) $map['meta']['board_h'] ?>
+                                </small>
+
+                                <button type="button" class="btn small">Выбрать</button>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
             </div>
         </section>
         <section class="panel">
@@ -340,6 +393,47 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
             </div>
         </article>
     `).join('');
+        }
+
+        const mapPickerModal = document.querySelector('#mapPickerModal');
+        const openMapPickerBtn = document.querySelector('#openMapPickerBtn');
+        const closeMapPickerBtn = document.querySelector('#closeMapPickerBtn');
+        const selectedMapInput = document.querySelector('#selectedMapInput');
+        const selectedMapTitle = document.querySelector('#selectedMapTitle');
+        const selectedMapMeta = document.querySelector('#selectedMapMeta');
+
+        if (openMapPickerBtn && mapPickerModal) {
+            openMapPickerBtn.addEventListener('click', () => {
+                mapPickerModal.classList.add('show');
+            });
+        }
+
+        if (closeMapPickerBtn && mapPickerModal) {
+            closeMapPickerBtn.addEventListener('click', () => {
+                mapPickerModal.classList.remove('show');
+            });
+        }
+
+        if (mapPickerModal) {
+            mapPickerModal.addEventListener('click', (e) => {
+                if (e.target === mapPickerModal) {
+                    mapPickerModal.classList.remove('show');
+                }
+            });
+
+            mapPickerModal.querySelectorAll('.map-choice-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const mapId = card.dataset.mapId;
+                    const mapTitle = card.dataset.mapTitle;
+                    const mapMeta = card.dataset.mapMeta;
+
+                    if (selectedMapInput) selectedMapInput.value = mapId || '';
+                    if (selectedMapTitle) selectedMapTitle.textContent = mapTitle || 'Карта';
+                    if (selectedMapMeta) selectedMapMeta.textContent = mapMeta || '';
+
+                    mapPickerModal.classList.remove('show');
+                });
+            });
         }
     </script>
     <?php render_notification_mount(); ?>

@@ -41,6 +41,7 @@ $recentReports = array_slice($recentReports, 0, 8);
     <nav>
         <a href="../lobby.php">Лобби</a>
         <a href="reports.php">Репорты</a>
+        <a href="maps.php">Карты</a>
         <a href="../logout.php">Выход</a>
     </nav>
 </header>

@@ -3,6 +3,7 @@
 require 'includes/config.php';
 require_auth();
 require 'includes/maps.php';
+require 'includes/map_settings.php';
 require 'includes/reports.php';
 
 $uid = current_user_id();
@@ -24,6 +25,11 @@ if ($title === '') {
 
 $max = max(3, min(6, (int) ($_POST['max'] ?? 6)));
 $mapId = normalize_map_id($_POST['map_id'] ?? 'classic_mansion');
+if (!map_can_be_created($mapId, (int) $uid)) {
+    $_SESSION['flash_error'] = 'Эта карта сейчас недоступна для создания игры.';
+    header('Location: lobby.php');
+    exit;
+}
 
 $db = db();
 $db->beginTransaction();
