@@ -1983,3 +1983,178 @@ td small { color: var(--muted); }
     grid-column: auto;
   }
 }
+
+/* Map tutorial and admin tools */
+.tutorial-pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+  max-height: 760px;
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(0,0,0,.22);
+  border: 1px solid rgba(255,255,255,.12);
+  line-height: 1.55;
+  font-size: 14px;
+}
+
+.map-guide-steps {
+  display: grid;
+  gap: 12px;
+}
+
+.map-guide-steps article {
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.055);
+  border: 1px solid rgba(255,255,255,.12);
+}
+
+.map-guide-steps article b {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.map-guide-steps article p {
+  margin: 0;
+  opacity: .78;
+}
+
+.clean-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.clean-list li {
+  opacity: .86;
+}
+
+.admin-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.admin-tool-card {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.admin-tool-card h2 {
+  margin-bottom: 0;
+}
+
+.admin-tool-card p {
+  margin: 0;
+  opacity: .78;
+}
+
+@media (max-width: 900px) {
+  .admin-tools-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.map-submit-form {
+  display: grid;
+  gap: 14px;
+}
+
+.map-submit-form label {
+  display: grid;
+  gap: 6px;
+  font-weight: 800;
+}
+
+.map-submit-form input,
+.map-submit-form textarea {
+  width: 100%;
+}
+
+.map-submission-list {
+  display: grid;
+  gap: 12px;
+}
+
+.map-submission-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.055);
+  border: 1px solid rgba(255,255,255,.12);
+}
+
+.map-submission-card div {
+  display: grid;
+  gap: 5px;
+}
+
+.map-submission-card small {
+  opacity: .72;
+}
+
+.map-submission-card p {
+  margin: 4px 0 0;
+  opacity: .82;
+}
+
+@media (max-width: 680px) {
+  .map-submission-card {
+    flex-direction: column;
+  }
+}
+
+.reconnect-list {
+  display: grid;
+  gap: 12px;
+}
+
+.reconnect-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.055);
+  border: 1px solid rgba(255,255,255,.12);
+}
+
+.reconnect-card.my-turn {
+  border-color: rgba(90, 220, 130, .35);
+  background: rgba(90, 220, 130, .08);
+}
+
+.reconnect-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.reconnect-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reconnect-title strong {
+  font-size: 17px;
+}
+
+.reconnect-main small {
+  opacity: .72;
+}
+
+@media (max-width: 680px) {
+  .reconnect-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

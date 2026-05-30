@@ -1,5 +1,6 @@
 <?php
 require 'includes/config.php';
+require 'includes/game_events.php';
 require_auth();
 $uid = current_user_id();
 $gid = (int) ($_POST['game_id'] ?? $_GET['game_id'] ?? 0);
@@ -15,6 +16,9 @@ if ($game['status'] !== 'waiting') {
     exit;
 }
 db()->prepare('DELETE FROM game_players WHERE game_id=? AND user_id=?')->execute([$gid, $uid]);
+if (function_exists('emit_game_event')) {
+    emit_game_event((int) $gid, (int) current_user_id(), 'player_left_lobby');
+}
 $count = db()->prepare('SELECT COUNT(*) FROM game_players WHERE game_id=?');
 $count->execute([$gid]);
 $count = (int) $count->fetchColumn();

@@ -55,6 +55,31 @@ function require_moderator_or_admin(): void
     }
 }
 
+function user_is_admin(?int $uid = null): bool
+{
+    $uid = $uid ?? current_user_id();
+
+    if (!$uid) {
+        return false;
+    }
+
+    $s = db()->prepare('SELECT role FROM users WHERE id=?');
+    $s->execute([$uid]);
+
+    return (string) $s->fetchColumn() === 'admin';
+}
+
+function require_admin(): void
+{
+    require_auth();
+
+    if (!user_is_admin()) {
+        http_response_code(403);
+        echo 'Доступ запрещён';
+        exit;
+    }
+}
+
 function report_user_is_in_game(int $gameId, int $userId): bool
 {
     $s = db()->prepare(

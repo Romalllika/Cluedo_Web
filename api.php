@@ -3,6 +3,7 @@ require 'includes/config.php';
 require 'includes/cards.php';
 require 'includes/maps.php';
 require 'includes/movement.php';
+require 'includes/game_events.php';
 require 'includes/game_lifecycle.php';
 require 'includes/afk.php';
 require 'includes/reports.php';
@@ -582,8 +583,7 @@ if ($a === 'start') {
                 $gid
             ]);
 
-    log_msg($gid, $uid, 'Игра началась. Тайное дело спрятано в конверте.');
-
+    log_msg($gid, $uid, 'Игра началась. Тайное дело спрятано в конверте.', 'game_started');
     json_out(['ok' => 1]);
 }
 
@@ -606,7 +606,11 @@ if ($a === 'roll') {
     )->execute([$d1 + $d2, $gid]);
 
     reset_player_afk($gid, $uid);
-    log_msg($gid, $uid, "Бросок кубиков: $d1 + $d2 = " . ($d1 + $d2));
+    log_msg($gid, $uid, "Бросок кубиков: $d1 + $d2 = " . ($d1 + $d2), 'dice_rolled', [
+        'd1' => $d1,
+        'd2' => $d2,
+        'total' => $d1 + $d2,
+    ]);
 
     json_out(['ok' => 1, 'd1' => $d1, 'd2' => $d2]);
 }
@@ -669,9 +673,13 @@ if ($a === 'secretPassage') {
     log_msg(
         $gid,
         $uid,
-        'Игрок использовал секретный проход: «' . $currentRoom . '» → «' . $targetRoom . '».'
+        'Игрок использовал секретный проход: «' . $currentRoom . '» → «' . $targetRoom . '».',
+        'secret_passage_used',
+        [
+            'from_room' => $currentRoom,
+            'to_room' => $targetRoom,
+        ]
     );
-
     json_out([
         'ok' => 1,
         'from' => $currentRoom,
@@ -735,7 +743,14 @@ if ($a === 'move') {
         $uid,
         'Фишка перемещена' .
         ($room ? ' в комнату «' . $room . '»' : '') .
-        '. Потрачено очков: ' . $dist . '.'
+        '. Потрачено очков: ' . $dist . '.',
+        'player_moved',
+        [
+            'x' => $x,
+            'y' => $y,
+            'room' => $room,
+            'distance' => $dist,
+        ]
     );
 
     json_out(['ok' => 1, 'room' => $room, 'distance' => $dist]);
@@ -818,8 +833,11 @@ if ($a === 'suggest') {
         json_out(['error' => 'Игрок не найден в порядке хода']);
     }
 
-    log_msg($gid, $uid, "Предложение: $sus, $weap, $room. Персонаж «$sus» перемещён в комнату.");
-
+    log_msg($gid, $uid, "Предложение: $sus, $weap, $room. Персонаж «$sus» перемещён в комнату.", 'suggestion_made', [
+        'suspect' => $sus,
+        'weapon' => $weap,
+        'room' => $room,
+    ]);
     progress_daily_tasks_bulk($uid, [
         'make_1_suggestion',
         'make_3_suggestions',
@@ -996,7 +1014,10 @@ if ($a === 'showCard') {
         'show_3_cards',
     ]);
 
-    log_msg($gid, $uid, 'Игрок показал карту для опровержения предположения.');
+    log_msg($gid, $uid, 'Игрок показал карту для опровержения предположения.', 'card_shown', [
+        'card_id' => $selectedCard['card_id'] ?? null,
+        'card_name' => $selectedCard['card_name'] ?? null,
+    ]);
 
     json_out(['ok' => 1]);
 }
@@ -1070,7 +1091,11 @@ if ($a === 'accuse') {
         );
     }
     if ($ok) {
-        log_msg($gid, $uid, "Финальное обвинение верное: $sus, $weap, $room. Игра окончена!");
+        log_msg($gid, $uid, "Финальное обвинение верное: $sus, $weap, $room. Игра окончена!", 'accusation_correct', [
+            'suspect' => $sus,
+            'weapon' => $weap,
+            'room' => $room,
+        ]);
         finish_game($gid, $uid);
         json_out(['ok' => 1, 'win' => 1]);
     }
@@ -1086,8 +1111,11 @@ if ($a === 'accuse') {
         WHERE id=?'
     )->execute([$uid]);
     reset_player_afk($gid, $uid);
-    log_msg($gid, $uid, 'Обвинение неверное. Игрок выбывает из расследования.');
-
+    log_msg($gid, $uid, 'Обвинение неверное. Игрок выбывает из расследования.', 'accusation_wrong', [
+        'suspect' => $sus,
+        'weapon' => $weap,
+        'room' => $room,
+    ]);
     if (finish_game_if_needed($gid)) {
         json_out(['ok' => 1, 'win' => 0, 'finished' => true]);
     }
@@ -1120,10 +1148,9 @@ if ($a === 'endTurn') {
     reset_player_afk($gid, $uid);
 
     progress_daily_task($uid, 'finish_5_turns');
-    
-    next_turn($gid);
-    log_msg($gid, $uid, 'Ход завершён.');
 
+    next_turn($gid);
+    log_msg($gid, $uid, 'Ход завершён.', 'turn_ended');
     json_out(['ok' => 1]);
 }
 

@@ -7,6 +7,7 @@ require 'includes/profile.php';
 require 'includes/invites.php';
 require 'includes/notifications.php';
 require 'includes/progression.php';
+require 'includes/reconnect.php';
 
 update_current_user_presence();
 $uid = current_user_id();
@@ -14,6 +15,8 @@ $uid = current_user_id();
 $accountXp = get_user_account_xp((int) $uid);
 $levelProgress = account_level_progress($accountXp);
 $dailyTasks = get_daily_tasks((int) $uid);
+
+$activeGames = get_user_active_games((int) $uid);
 
 $incomingGameInvites = get_incoming_game_invites((int) $uid);
 
@@ -46,6 +49,8 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
         <nav>
             <a href="lobby.php">Лобби</a>
             <a href="players.php">Игроки</a>
+            <a href="map_tutorial.php">Создать карту</a>
+            <a href="map_submit.php">Отправить карту</a>
             <a href="profile.php">Мой профиль</a>
             <?php if (user_is_moderator_or_admin()): ?>
                 <a href="admin/index.php">Админка</a>
@@ -130,6 +135,49 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
                 <?php endforeach; ?>
             </div>
         </section>
+        <?php if ($activeGames): ?>
+            <section class="panel">
+                <div class="section-head">
+                    <h2>Ваши активные матчи</h2>
+                    <small><?= count($activeGames) ?> активных</small>
+                </div>
+
+                <div class="reconnect-list">
+                    <?php foreach ($activeGames as $activeGame): ?>
+                        <?php
+                        $isMyTurn = (int) ($activeGame['current_turn_player_id'] ?? 0) === (int) $uid;
+                        ?>
+                        <article class="reconnect-card <?= $isMyTurn ? 'my-turn' : '' ?>">
+                            <div class="reconnect-main">
+                                <div class="reconnect-title">
+                                    <strong><?= h($activeGame['title']) ?></strong>
+
+                                    <span
+                                        class="status-pill <?= $activeGame['status'] === 'active' ? 'status-confirmed' : 'status-reviewing' ?>">
+                                        <?= h(game_status_human($activeGame['status'])) ?>
+                                    </span>
+
+                                    <?php if ($isMyTurn): ?>
+                                        <span class="status-pill status-open">Ваш ход</span>
+                                    <?php endif; ?>
+                                </div>
+
+                                <small>
+                                    Карта: <?= h($activeGame['map_id']) ?> ·
+                                    Персонаж: <?= h($activeGame['character_name']) ?> ·
+                                    Игроков: <?= (int) $activeGame['players_count'] ?> ·
+                                    Фаза: <?= h(game_phase_human($activeGame['phase'])) ?>
+                                </small>
+                            </div>
+
+                            <a class="btn" href="game.php?id=<?= (int) $activeGame['id'] ?>">
+                                Вернуться
+                            </a>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        <?php endif; ?>
         <section class="panel" id="incomingInvitesPanel" style="<?= $incomingGameInvites ? '' : 'display:none' ?>">
             <div class="section-head">
                 <h2>Входящие приглашения</h2>

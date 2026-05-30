@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Хост: localhost
--- Время создания: Май 29 2026 г., 05:12
+-- Время создания: Май 30 2026 г., 13:38
 -- Версия сервера: 8.0.39
 -- Версия PHP: 8.2.23
 
@@ -175,6 +175,36 @@ CREATE TABLE `game_reports` (
 -- --------------------------------------------------------
 
 --
+-- Структура таблицы `map_settings`
+--
+
+CREATE TABLE `map_settings` (
+  `id` int NOT NULL,
+  `map_id` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `title` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `enabled` tinyint(1) NOT NULL DEFAULT '1',
+  `category` enum('official','community','event','testing','archived') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'official',
+  `visibility` enum('public','staff','private') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'public',
+  `sort_order` int NOT NULL DEFAULT '100',
+  `created_by_user_id` int DEFAULT NULL,
+  `event_starts_at` datetime DEFAULT NULL,
+  `event_ends_at` datetime DEFAULT NULL,
+  `notes` text COLLATE utf8mb4_general_ci,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Дамп данных таблицы `map_settings`
+--
+
+INSERT INTO `map_settings` (`id`, `map_id`, `title`, `enabled`, `category`, `visibility`, `sort_order`, `created_by_user_id`, `event_starts_at`, `event_ends_at`, `notes`, `created_at`, `updated_at`) VALUES
+(1, 'classic_mansion', 'Классический особняк', 1, 'official', 'public', 100, NULL, NULL, NULL, NULL, '2026-05-30 13:08:02', '2026-05-30 13:08:02'),
+(2, 'modern_villa', 'Современная Вилла', 1, 'official', 'public', 110, NULL, NULL, NULL, '', '2026-05-30 13:08:02', '2026-05-30 13:37:29');
+
+-- --------------------------------------------------------
+
+--
 -- Структура таблицы `player_cards`
 --
 
@@ -218,7 +248,7 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `username`, `role`, `password_hash`, `wins`, `losses`, `surrenders`, `wrong_accusations`, `warnings_count`, `create_blocked_until`, `game_banned_until`, `games_played`, `created_at`, `last_seen_at`, `create_ban_permanent`, `game_ban_permanent`, `account_xp`) VALUES
-(1, 'Romalllika', 'admin', '$2y$10$zFldMeNfUXKYrPzMURl5cOnEdeviqtZoaPFYCvlz.IVxzfvU9EASa', 0, 0, 0, 0, 0, NULL, NULL, 0, '2026-04-25 13:26:17', '2026-05-29 08:12:09', 0, 0, 0);
+(1, 'Romalllika', 'admin', '$2y$10$zFldMeNfUXKYrPzMURl5cOnEdeviqtZoaPFYCvlz.IVxzfvU9EASa', 0, 0, 0, 0, 0, NULL, NULL, 0, '2026-04-25 13:26:17', '2026-05-30 16:38:54', 0, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -247,7 +277,10 @@ CREATE TABLE `user_daily_tasks` (
 INSERT INTO `user_daily_tasks` (`id`, `user_id`, `task_key`, `task_date`, `progress`, `target`, `xp_reward`, `is_claimed`, `created_at`, `completed_at`, `claimed_at`) VALUES
 (1, 1, 'make_1_accusation', '2026-05-29', 0, 1, 90, 0, '2026-05-29 04:48:16', NULL, NULL),
 (2, 1, 'make_3_suggestions', '2026-05-29', 0, 3, 130, 0, '2026-05-29 04:48:16', NULL, NULL),
-(3, 1, 'make_1_suggestion', '2026-05-29', 0, 1, 60, 0, '2026-05-29 04:48:16', NULL, NULL);
+(3, 1, 'make_1_suggestion', '2026-05-29', 0, 1, 60, 0, '2026-05-29 04:48:16', NULL, NULL),
+(4, 1, 'show_3_cards', '2026-05-30', 0, 3, 140, 0, '2026-05-30 12:38:01', NULL, NULL),
+(5, 1, 'show_1_card', '2026-05-30', 0, 1, 70, 0, '2026-05-30 12:38:01', NULL, NULL),
+(6, 1, 'play_2_games', '2026-05-30', 0, 2, 140, 0, '2026-05-30 12:38:01', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -336,6 +369,17 @@ ALTER TABLE `game_reports`
   ADD KEY `idx_reports_status` (`status`);
 
 --
+-- Индексы таблицы `map_settings`
+--
+ALTER TABLE `map_settings`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uniq_map_id` (`map_id`),
+  ADD KEY `idx_map_enabled` (`enabled`),
+  ADD KEY `idx_map_category` (`category`),
+  ADD KEY `idx_map_visibility` (`visibility`),
+  ADD KEY `idx_map_sort` (`sort_order`);
+
+--
 -- Индексы таблицы `player_cards`
 --
 ALTER TABLE `player_cards`
@@ -384,13 +428,13 @@ ALTER TABLE `friend_requests`
 -- AUTO_INCREMENT для таблицы `games`
 --
 ALTER TABLE `games`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
 
 --
 -- AUTO_INCREMENT для таблицы `game_character_positions`
 --
 ALTER TABLE `game_character_positions`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21375;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21403;
 
 --
 -- AUTO_INCREMENT для таблицы `game_invites`
@@ -408,13 +452,19 @@ ALTER TABLE `game_logs`
 -- AUTO_INCREMENT для таблицы `game_players`
 --
 ALTER TABLE `game_players`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
 
 --
 -- AUTO_INCREMENT для таблицы `game_reports`
 --
 ALTER TABLE `game_reports`
   MODIFY `id` int NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT для таблицы `map_settings`
+--
+ALTER TABLE `map_settings`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
 -- AUTO_INCREMENT для таблицы `player_cards`
@@ -432,7 +482,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT для таблицы `user_daily_tasks`
 --
 ALTER TABLE `user_daily_tasks`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT для таблицы `user_moderation_actions`

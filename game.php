@@ -7,6 +7,7 @@ require 'includes/profile.php';
 require 'includes/friends.php';
 require 'includes/invites.php';
 require 'includes/notifications.php';
+require 'includes/reports.php';
 
 update_current_user_presence();
 
@@ -20,6 +21,11 @@ $uid = current_user_id();
 $joined = db()->prepare('SELECT * FROM game_players WHERE game_id=? AND user_id=?');
 $joined->execute([$gid, $uid]);
 $mePlayer = $joined->fetch();
+if ($game['status'] === 'active' && !$mePlayer && !user_is_moderator_or_admin((int) $uid)) {
+    http_response_code(403);
+    echo 'Вы не участвуете в этом активном матче.';
+    exit;
+}
 $players = db()->prepare('SELECT gp.*,u.username FROM game_players gp JOIN users u ON u.id=gp.user_id WHERE gp.game_id=? ORDER BY gp.turn_order');
 $players->execute([$gid]);
 $players = $players->fetchAll();

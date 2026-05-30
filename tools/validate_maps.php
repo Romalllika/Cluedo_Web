@@ -3,9 +3,10 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/reports.php';
 
 if (PHP_SAPI !== 'cli') {
-    require_auth();
+    require_admin();
 }
 
 /**

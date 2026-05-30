@@ -7,7 +7,6 @@ require_auth();
 
 $uid = (int) current_user_id();
 
-require_auth();
 /**
  * Удаляем только реально пустые ожидающие лобби.
  * После правки create_game.php новое лобби уже не будет пустым,

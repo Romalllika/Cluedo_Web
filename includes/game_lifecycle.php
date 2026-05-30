@@ -22,13 +22,24 @@ function players(int $gid): array
     return $s->fetchAll();
 }
 
-function log_msg(int $gid, ?int $uid, string $msg): void
-{
+function log_msg(
+    int $gid,
+    ?int $uid,
+    string $msg,
+    string $eventType = 'log_message',
+    array $eventData = []
+): void {
     $s = db()->prepare(
         'INSERT INTO game_logs(game_id,user_id,message)
          VALUES(?,?,?)'
     );
     $s->execute([$gid, $uid, $msg]);
+
+    if (function_exists('emit_game_event')) {
+        emit_game_event($gid, $uid, $eventType, array_merge([
+            'message' => $msg,
+        ], $eventData));
+    }
 }
 
 function is_turn($g, int $uid): bool
@@ -164,6 +175,11 @@ function finish_game(int $gid, ?int $winnerId): void
     )->execute([$winnerId, $gid]);
 
     apply_game_stats_once($gid, $winnerId);
+    if (function_exists('emit_game_event')) {
+        emit_game_event($gid, $winnerId, 'game_finished', [
+            'winner_user_id' => $winnerId,
+        ]);
+    }
 }
 
 function finish_game_if_needed(int $gid): bool
@@ -239,8 +255,7 @@ function surrender_player(int $gid, int $uid, string $reason = 'Игрок сд�
         WHERE id=?'
     )->execute([$uid]);
 
-    log_msg($gid, $uid, $reason);
-
+    log_msg($gid, $uid, $reason, 'player_surrendered');
     if (finish_game_if_needed($gid)) {
         return ['ok' => 1, 'finished' => true];
     }

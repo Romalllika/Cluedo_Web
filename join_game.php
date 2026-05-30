@@ -4,6 +4,7 @@ require 'includes/config.php';
 require_auth();
 require 'includes/maps.php';
 require 'includes/reports.php';
+require 'includes/game_events.php';
 
 $uid = current_user_id();
 
@@ -121,6 +122,13 @@ try {
         $startX,
         $startY
     ]);
+
+    if (function_exists('emit_game_event')) {
+        emit_game_event((int) $gid, (int) $uid, 'player_joined', [
+            'seat_no' => $seat,
+            'character_name' => $c['name'],
+        ]);
+    }
 
     $db->commit();
 

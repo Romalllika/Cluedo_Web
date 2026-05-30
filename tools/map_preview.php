@@ -3,8 +3,9 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/reports.php';
 
-require_auth();
+require_admin();
 
 require_once __DIR__ . '/../includes/cards.php';
 require_once __DIR__ . '/../includes/maps.php';
