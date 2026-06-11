@@ -199,6 +199,7 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
                 </div>
 
                 <button type="submit" class="btn primary-action">Сохранить решение</button>
+                <?= csrf_field() ?>
             </form>
         </div>
     </section>

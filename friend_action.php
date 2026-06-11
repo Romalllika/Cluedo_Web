@@ -5,6 +5,7 @@ require 'includes/profile.php';
 require 'includes/friends.php';
 
 require_auth();
+csrf_check();
 
 update_current_user_presence();
 

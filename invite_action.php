@@ -6,6 +6,7 @@ require 'includes/friends.php';
 require 'includes/invites.php';
 
 require_auth();
+csrf_check();
 
 update_current_user_presence();
 

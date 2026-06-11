@@ -2,6 +2,7 @@
 
 require 'includes/config.php';
 require_auth();
+csrf_check();
 require 'includes/maps.php';
 
 $uid = current_user_id();

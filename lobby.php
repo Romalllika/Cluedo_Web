@@ -126,6 +126,7 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
                                 <form action="task_action.php" method="post">
                                     <input type="hidden" name="task_id" value="<?= (int) $task['id'] ?>">
                                     <button class="btn small" type="submit">Забрать</button>
+                                    <?= csrf_field() ?>
                                 </form>
                             <?php else: ?>
                                 <b>В процессе</b>
@@ -209,12 +210,14 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
                                 <input type="hidden" name="action" value="accept">
                                 <input type="hidden" name="invite_id" value="<?= (int) $invite['id'] ?>">
                                 <button class="btn" type="submit">Принять</button>
+                                <?= csrf_field() ?>
                             </form>
 
                             <form action="invite_action.php" method="post">
                                 <input type="hidden" name="action" value="reject">
                                 <input type="hidden" name="invite_id" value="<?= (int) $invite['id'] ?>">
                                 <button class="danger-btn" type="submit">Отклонить</button>
+                                <?= csrf_field() ?>
                             </form>
                         </div>
                     </article>
@@ -257,6 +260,7 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
                     </div>
 
                     <button <?= !$maps ? 'disabled' : '' ?>>Создать</button>
+                    <?= csrf_field() ?>
                 </form>
             </div>
             <div class="panel">
@@ -431,12 +435,14 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
                     <input type="hidden" name="action" value="accept">
                     <input type="hidden" name="invite_id" value="${Number(invite.id)}">
                     <button class="btn" type="submit">Принять</button>
+                    <?= csrf_field() ?>
                 </form>
 
                 <form action="invite_action.php" method="post">
                     <input type="hidden" name="action" value="reject">
                     <input type="hidden" name="invite_id" value="${Number(invite.id)}">
                     <button class="danger-btn" type="submit">Отклонить</button>
+                    <?= csrf_field() ?>
                 </form>
             </div>
         </article>

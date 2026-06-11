@@ -31,9 +31,14 @@ $players->execute([$gid]);
 $players = $players->fetchAll();
 $taken = array_column($players, 'seat_no');
 
+$canInviteToGame =
+    $game['status'] === 'waiting'
+    && ($game['phase'] ?? '') === 'join'
+    && $mePlayer;
+
 $onlineFriendsForInvite = [];
 
-if ($game['status'] === 'waiting' && $mePlayer) {
+if ($canInviteToGame) {
     $onlineFriendsForInvite = get_online_friends_for_game_invite((int) $uid, (int) $gid);
 }
 ?>
@@ -47,13 +52,14 @@ if ($game['status'] === 'waiting' && $mePlayer) {
     <link rel="stylesheet" href="assets/style.css">
 </head>
 
-<body data-game="<?= $gid ?>">
+<body data-game="<?= $gid ?>" data-csrf-token="<?= h(csrf_token()) ?>">
     <header class="top"><b>🎲 <?= h($game['title']) ?></b>
         <nav>
-            <?php if ($game['status'] === 'waiting' && $mePlayer): ?>
+            <?php if ($canInviteToGame): ?>
                 <form action="leave_lobby.php" method="post" class="inline-form">
                     <input type="hidden" name="game_id" value="<?= $gid ?>">
                     <button class="link-button" type="submit">Покинуть лобби</button>
+                    <?= csrf_field() ?>
                 </form>
             <?php endif; ?>
 
@@ -83,7 +89,7 @@ if ($game['status'] === 'waiting' && $mePlayer) {
                 </div>
                 <div class="actions">
                     <button id="startBtn">Старт</button>
-                    <?php if ($game['status'] === 'waiting' && $mePlayer): ?>
+                    <?php if ($canInviteToGame): ?>
                         <button id="inviteFriendsBtn" type="button">Пригласить</button>
                     <?php endif; ?>
                     <button id="rollBtn">Бросить кубики</button>
@@ -118,7 +124,7 @@ if ($game['status'] === 'waiting' && $mePlayer) {
             </div>
         </aside>
     </main>
-    <?php if ($game['status'] === 'waiting' && $mePlayer): ?>
+    <?php if ($canInviteToGame): ?>
         <template id="inviteFriendsTemplate">
             <div class="invite-friends-modal">
                 <?php if (!$onlineFriendsForInvite): ?>
@@ -141,6 +147,7 @@ if ($game['status'] === 'waiting' && $mePlayer) {
                                         <input type="hidden" name="receiver_user_id" value="<?= (int) $friend['id'] ?>">
                                         <input type="hidden" name="profile_user_id" value="<?= (int) $friend['id'] ?>">
                                         <button class="btn small" type="submit">Пригласить</button>
+                                        <?= csrf_field() ?>
                                     </form>
                                 <?php endif; ?>
                             </article>

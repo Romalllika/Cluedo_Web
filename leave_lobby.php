@@ -2,6 +2,7 @@
 require 'includes/config.php';
 require 'includes/game_events.php';
 require_auth();
+csrf_check();
 $uid = current_user_id();
 $gid = (int) ($_POST['game_id'] ?? $_GET['game_id'] ?? 0);
 $g = db()->prepare('SELECT * FROM games WHERE id=?');

@@ -12,11 +12,29 @@ require 'includes/progression.php';
 
 require_auth();
 
+$a = $_POST['action'] ?? $_GET['action'] ?? '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $a !== 'state') {
+    $token = (string) ($_POST['csrf_token'] ?? '');
+
+    if (
+        $token === ''
+        || empty($_SESSION['csrf_token'])
+        || !hash_equals((string) $_SESSION['csrf_token'], $token)
+    ) {
+        json_out([
+            'ok' => false,
+            'error' => 'Некорректный CSRF-токен. Обновите страницу и попробуйте снова.',
+        ]);
+    }
+}
+
 $uid = current_user_id();
+
 if ($uid) {
     update_current_user_presence();
 }
-$a = $_POST['action'] ?? $_GET['action'] ?? '';
+
 $gid = (int) ($_POST['game_id'] ?? $_GET['game_id'] ?? 0);
 
 

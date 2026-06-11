@@ -10,6 +10,7 @@ if (is_file(__DIR__ . '/includes/notifications.php')) {
 }
 
 require_auth();
+csrf_check();
 update_current_user_presence();
 
 $uid = (int) current_user_id();
@@ -122,6 +123,7 @@ $submissions = get_user_map_submissions($uid);
                     <button type="submit" class="btn">Отправить на проверку</button>
                     <a class="btn" href="map_tutorial.php">Открыть инструкцию</a>
                 </div>
+                <?= csrf_field() ?>
             </form>
         </div>
 

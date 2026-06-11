@@ -76,6 +76,7 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
             <?php if ($q !== ''): ?>
                 <a class="btn" href="players.php">Сбросить</a>
             <?php endif; ?>
+            <?= csrf_field() ?>
         </form>
     </section>
 
@@ -132,6 +133,7 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
                                     <input type="hidden" name="action" value="send">
                                     <input type="hidden" name="profile_user_id" value="<?= (int) $player['id'] ?>">
                                     <button class="btn small" type="submit">Добавить</button>
+                                    <?= csrf_field() ?>
                                 </form>
                             <?php elseif ($relation['type'] === 'incoming_pending'): ?>
                                 <form action="friend_action.php" method="post">
@@ -139,6 +141,7 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
                                     <input type="hidden" name="request_id" value="<?= (int) $relation['request']['id'] ?>">
                                     <input type="hidden" name="profile_user_id" value="<?= (int) $player['id'] ?>">
                                     <button class="btn small" type="submit">Принять</button>
+                                    <?= csrf_field() ?>
                                 </form>
                             <?php endif; ?>
                         </div>

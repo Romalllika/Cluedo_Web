@@ -140,6 +140,7 @@ $filename = map_submission_download_filename($submission);
                 </label>
 
                 <button class="btn primary-action" type="submit">Сохранить решение</button>
+                <?= csrf_field() ?>
             </form>
         </div>
     </section>

@@ -151,6 +151,7 @@ array_unshift($profileHeaderCounts, [
                         <input type="hidden" name="action" value="send">
                         <input type="hidden" name="profile_user_id" value="<?= (int) $user['id'] ?>">
                         <button class="btn" type="submit">Добавить в друзья</button>
+                        <?= csrf_field() ?>
                     </form>
                 <?php elseif ($friendRelation['type'] === 'outgoing_pending'): ?>
                     <form action="friend_action.php" method="post">
@@ -158,6 +159,7 @@ array_unshift($profileHeaderCounts, [
                         <input type="hidden" name="request_id" value="<?= (int) $friendRelation['request']['id'] ?>">
                         <input type="hidden" name="profile_user_id" value="<?= (int) $user['id'] ?>">
                         <button class="btn" type="submit">Отменить заявку</button>
+                        <?= csrf_field() ?>
                     </form>
                 <?php elseif ($friendRelation['type'] === 'incoming_pending'): ?>
                     <form action="friend_action.php" method="post">
@@ -165,6 +167,7 @@ array_unshift($profileHeaderCounts, [
                         <input type="hidden" name="request_id" value="<?= (int) $friendRelation['request']['id'] ?>">
                         <input type="hidden" name="profile_user_id" value="<?= (int) $user['id'] ?>">
                         <button class="btn" type="submit">Принять заявку</button>
+                        <?= csrf_field() ?>
                     </form>
 
                     <form action="friend_action.php" method="post">
@@ -172,12 +175,14 @@ array_unshift($profileHeaderCounts, [
                         <input type="hidden" name="request_id" value="<?= (int) $friendRelation['request']['id'] ?>">
                         <input type="hidden" name="profile_user_id" value="<?= (int) $user['id'] ?>">
                         <button class="danger-btn" type="submit">Отклонить</button>
+                        <?= csrf_field() ?>
                     </form>
                 <?php elseif ($friendRelation['type'] === 'friends'): ?>
                     <form action="friend_action.php" method="post">
                         <input type="hidden" name="action" value="remove">
                         <input type="hidden" name="profile_user_id" value="<?= (int) $user['id'] ?>">
                         <button class="danger-btn" type="submit">Удалить из друзей</button>
+                        <?= csrf_field() ?>
                     </form>
                 <?php endif; ?>
 
@@ -308,6 +313,7 @@ array_unshift($profileHeaderCounts, [
                     <div class="form-actions">
                         <button class="danger-btn" type="submit">Отправить жалобу</button>
                     </div>
+                    <?= csrf_field() ?>
                 </form>
             <?php endif; ?>
         </section>

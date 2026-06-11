@@ -5,6 +5,7 @@ require 'includes/profile.php';
 require 'includes/progression.php';
 
 require_auth();
+csrf_check();
 update_current_user_presence();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

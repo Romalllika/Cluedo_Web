@@ -5,6 +5,7 @@ require '../includes/reports.php';
 require '../includes/map_submissions.php';
 
 require_admin();
+csrf_check();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: map_submissions.php');

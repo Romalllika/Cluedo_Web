@@ -2,6 +2,7 @@
 
 require 'includes/config.php';
 require_auth();
+csrf_check();
 require 'includes/maps.php';
 require 'includes/map_settings.php';
 require 'includes/reports.php';

@@ -161,6 +161,7 @@ $maps = get_admin_maps();
                             </label>
 
                             <button class="btn small" type="submit">Сохранить</button>
+                            <?= csrf_field() ?>
                         </form>
                     </article>
                 <?php endforeach; ?>

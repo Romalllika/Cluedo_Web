@@ -5,6 +5,7 @@ if (current_user_id()) {
 }
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  csrf_check();
   $username = trim($_POST['username'] ?? '');
   $pass = $_POST['password'] ?? '';
   $mode = $_POST['mode'] ?? 'login';
@@ -14,7 +15,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
       $st = db()->prepare('INSERT INTO users(username,password_hash) VALUES(?,?)');
       $st->execute([$username, password_hash($pass, PASSWORD_DEFAULT)]);
-      $_SESSION['user_id'] = db()->lastInsertId();
+      session_regenerate_id(true);
+      $_SESSION['user_id'] = (int) db()->lastInsertId();
+      unset($_SESSION['csrf_token']);
+
       header('Location: lobby.php');
       exit;
     } catch (Exception $e) {
@@ -25,7 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $st->execute([$username]);
     $u = $st->fetch();
     if ($u && password_verify($pass, $u['password_hash'])) {
-      $_SESSION['user_id'] = $u['id'];
+      session_regenerate_id(true);
+      $_SESSION['user_id'] = (int) $u['id'];
+      unset($_SESSION['csrf_token']);
+
       header('Location: lobby.php');
       exit;
     } else
@@ -50,11 +57,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="alert"><?= h($error) ?></div><?php endif; ?>
     <form method="post">
       <input name="username" placeholder="Логин" maxlength="40" required>
-      <input name="password"type="password" placeholder="Пароль" required>
+      <input name="password" type="password" placeholder="Пароль" required>
       <div class="row">
         <button name="mode" value="login">Войти</button>
-        <button name="mode" value="register"class="secondary">Регистрация</button>
-        </div>
+        <button name="mode" value="register" class="secondary">Регистрация</button>
+      </div>
+      <?= csrf_field() ?>
     </form>
   </main>
 </body>

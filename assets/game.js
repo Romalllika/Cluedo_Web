@@ -9,6 +9,8 @@ let endGameShown = false;
 let cardsRenderedOnce = false;
 let lastCardsKey = '';
 
+const CSRF_TOKEN = document.body.dataset.csrfToken || '';
+
 const $ = s => document.querySelector(s);
 const canvas = $('#mansionCanvas');
 const ctx = canvas ? canvas.getContext('2d') : null;
@@ -73,10 +75,17 @@ function selectedCardPayload(select, legacyKey, idKey) {
 
 function api(action, data = {}) {
   const fd = new FormData();
+
+  fd.append('csrf_token', CSRF_TOKEN);
   fd.append('action', action);
   fd.append('game_id', gid);
+
   Object.entries(data).forEach(([k, v]) => fd.append(k, v));
-  return fetch('api.php', { method: 'POST', body: fd }).then(r => r.json());
+
+  return fetch('api.php', {
+    method: 'POST',
+    body: fd
+  }).then(r => r.json());
 }
 function closeModal() { $('#modal').classList.remove('show'); }
 function openModal(title, html) { $('#modalTitle').textContent = title; $('#modalBody').innerHTML = html; $('#modal').classList.add('show'); }
@@ -266,12 +275,12 @@ function render() {
     g.status === 'waiting' ? 'Ожидание старта' : g.status === 'finished' ? 'Игра завершена' : 'Ход: ' + (current ? current.username + ' / ' + current.character_name : '-');
 
   const phaseNames = {
-    join: 'ожидание',
+    join: 'ожидание игроков',
     roll: 'бросок кубиков',
-    move: 'движение',
+    move: 'перемещение',
     suggest: 'предположение',
-    disprove: 'опровержение',
-    accuse: 'обвинение / завершение хода',
+    disprove: 'опровержение предположения',
+    accuse: 'после предположения: обвинение или конец хода',
     ended: 'конец игры'
   };
 
@@ -312,6 +321,15 @@ function render() {
         ? 'inline-flex'
         : 'none';
   });
+
+  const inviteBtn = $('#inviteFriendsBtn');
+
+  if (inviteBtn) {
+    inviteBtn.style.display =
+      g.status === 'waiting' && g.phase === 'join'
+        ? 'inline-flex'
+        : 'none';
+  }
 
   const surrenderBtn = $('#surrenderBtn');
   if (surrenderBtn) {

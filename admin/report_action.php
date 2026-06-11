@@ -4,6 +4,7 @@ require '../includes/config.php';
 require '../includes/reports.php';
 
 require_moderator_or_admin();
+csrf_check();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: reports.php');

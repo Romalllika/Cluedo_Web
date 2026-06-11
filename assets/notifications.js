@@ -1,5 +1,6 @@
 (function () {
   const mount = document.querySelector('#notificationMount');
+  const CSRF_TOKEN = mount?.dataset.csrfToken || '';
 
   if (!mount) {
     return;
@@ -59,12 +60,14 @@
 
           <div class="app-notification-actions">
             <form action="invite_action.php" method="post">
+              <input type="hidden" name="csrf_token" value="${escapeHtml(CSRF_TOKEN)}">
               <input type="hidden" name="action" value="accept">
               <input type="hidden" name="invite_id" value="${Number(invite.id)}">
               <button class="btn small" type="submit">Принять</button>
             </form>
 
             <form action="invite_action.php" method="post">
+              <input type="hidden" name="csrf_token" value="${escapeHtml(CSRF_TOKEN)}">
               <input type="hidden" name="action" value="reject">
               <input type="hidden" name="invite_id" value="${Number(invite.id)}">
               <button class="danger-btn small" type="submit">Отклонить</button>
