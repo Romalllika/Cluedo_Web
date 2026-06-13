@@ -24,8 +24,16 @@ if ($title === '') {
     $title = 'Новая игра';
 }
 
-$max = max(3, min(6, (int) ($_POST['max'] ?? 6)));
 $mapId = normalize_map_id($_POST['map_id'] ?? 'classic_mansion');
+
+$mapConfig = load_map_config_by_id($mapId);
+$max = count(map_suspect_cards_from_config($mapConfig));
+
+if ($max < 3) {
+    $_SESSION['flash_error'] = 'На выбранной карте должно быть минимум 3 персонажа.';
+    header('Location: lobby.php');
+    exit;
+}
 if (!map_can_be_created($mapId, (int) $uid)) {
     $_SESSION['flash_error'] = 'Эта карта сейчас недоступна для создания игры.';
     header('Location: lobby.php');

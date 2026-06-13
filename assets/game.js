@@ -398,7 +398,14 @@ function render() {
   }
 
 
-  $('#startBtn').style.display = g.status === 'waiting' ? 'inline-flex' : 'none';
+  const startBtn = $('#startBtn');
+  const playersCount = ps.length;
+
+  if (startBtn) {
+    startBtn.style.display = g.status === 'waiting' ? 'inline-flex' : 'none';
+    startBtn.disabled = g.status === 'waiting' && playersCount < 3;
+    startBtn.title = playersCount < 3 ? 'Нужно минимум 3 игрока' : '';
+  }
   ['rollBtn', 'secretPassageBtn', 'suggestBtn', 'accuseBtn', 'endBtn'].forEach(id => {
     const btn = $('#' + id);
 

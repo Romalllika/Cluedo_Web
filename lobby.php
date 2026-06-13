@@ -231,13 +231,6 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
                 <form action="create_game.php" method="post" class="create">
                     <input name="title" placeholder="Название матча" value="Матч <?= date('H:i') ?>">
 
-                    <select name="max">
-                        <option>3</option>
-                        <option>4</option>
-                        <option>5</option>
-                        <option selected>6</option>
-                    </select>
-
                     <input type="hidden" name="map_id" id="selectedMapInput" value="<?= h($selectedMap['id'] ?? '') ?>">
 
                     <div class="map-picker-field">
