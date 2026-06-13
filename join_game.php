@@ -17,8 +17,10 @@ if ($restriction !== null) {
     exit;
 }
 
-$gid = (int) ($_GET['game_id'] ?? 0);
-$seat = isset($_GET['seat']) ? (int) $_GET['seat'] : -1;
+$gid = (int) ($_POST['game_id'] ?? $_GET['game_id'] ?? 0);
+$seat = isset($_POST['seat'])
+    ? (int) $_POST['seat']
+    : (isset($_GET['seat']) ? (int) $_GET['seat'] : -1);
 
 $chars = characters_for_game($gid);
 

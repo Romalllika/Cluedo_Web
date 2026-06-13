@@ -6,6 +6,7 @@ require '../includes/reports.php';
 require '../includes/map_settings.php';
 
 require_moderator_or_admin();
+csrf_check();
 
 $flashSuccess = $_SESSION['flash_success'] ?? '';
 $flashError = $_SESSION['flash_error'] ?? '';

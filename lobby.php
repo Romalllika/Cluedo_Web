@@ -49,6 +49,7 @@ $leaders = db()->query("SELECT username,wins,losses,games_played,ROUND(IF(games_
         <nav>
             <a href="lobby.php">Лобби</a>
             <a href="players.php">Игроки</a>
+            <a href="how_to_play.php">Как играть</a>
             <a href="map_tutorial.php">Создать карту</a>
             <a href="map_submit.php">Отправить карту</a>
             <a href="profile.php">Мой профиль</a>

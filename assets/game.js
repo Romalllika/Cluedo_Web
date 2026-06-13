@@ -266,10 +266,100 @@ function startAfkTimer(limit, age, phase) {
   tick();
   afkLocalTimer = setInterval(tick, 1000);
 }
+function renderTurnHint() {
+  const titleEl = $('#turnHintTitle');
+  const textEl = $('#turnHintText');
+  const box = $('#turnHint');
+
+  if (!titleEl || !textEl || !box || !state) return;
+
+  const g = state.game || {};
+  const me = state.me || {};
+  const currentPlayer = state.players?.find(p => Number(p.id) === Number(g.current_turn_player_id));
+  const currentName = currentPlayer?.username || currentPlayer?.character_name || 'другого игрока';
+
+  let title = 'Игра загружается';
+  let text = 'Подождите, состояние матча обновляется.';
+  let mode = 'neutral';
+
+  if (g.status === 'waiting') {
+    title = 'Ожидание игроков';
+    text = 'Можно пригласить друзей, выбрать место и дождаться старта игры.';
+    mode = 'neutral';
+  } else if (g.status === 'finished' || g.phase === 'ended') {
+    title = 'Игра завершена';
+    text = 'Матч окончен. Можно вернуться в лобби или посмотреть журнал событий.';
+    mode = 'neutral';
+  } else if (!me || !me.id) {
+    title = 'Вы наблюдаете за матчем';
+    text = 'Вы не являетесь участником этой игры, поэтому действия недоступны.';
+    mode = 'neutral';
+  } else if (me.is_eliminated) {
+    title = 'Вы выбыли из расследования';
+    text = 'Вы больше не можете делать ходы, но можете следить за окончанием игры.';
+    mode = 'danger';
+  } else if (!state.isMyTurn && g.phase !== 'disprove') {
+    title = `Сейчас ходит ${currentName}`;
+    text = 'Дождитесь своего хода. Пока можно смотреть журнал, карты и делать заметки.';
+    mode = 'neutral';
+  } else {
+    switch (g.phase) {
+      case 'roll':
+        title = 'Ваш ход: бросьте кубики';
+        text = 'Нажмите кнопку броска, чтобы узнать, сколько клеток можно пройти.';
+        mode = 'active';
+        break;
+
+      case 'move':
+        title = 'Ваш ход: выберите клетку';
+        text = 'Кликните по доступной клетке на поле. Если зайдёте в комнату, сможете сделать предположение.';
+        mode = 'active';
+        break;
+
+      case 'suggest':
+        title = 'Вы в комнате: сделайте предположение';
+        text = 'Выберите подозреваемого и оружие. Комната берётся из текущего положения персонажа.';
+        mode = 'active';
+        break;
+
+      case 'disprove':
+        if (state.mustDisprove) {
+          title = 'Нужно опровергнуть предположение';
+          text = 'Выберите одну карту из доступных, чтобы показать её игроку, сделавшему предположение.';
+          mode = 'active';
+        } else {
+          title = 'Идёт опровержение предположения';
+          text = 'Другие игроки проверяют, могут ли показать карту из предположения.';
+          mode = 'neutral';
+        }
+        break;
+
+      case 'accuse':
+        title = 'После предположения';
+        text = 'Можно завершить ход или сделать финальное обвинение. Обвиняйте только если уверены.';
+        mode = 'warning';
+        break;
+
+      default:
+        title = 'Ожидание действия';
+        text = 'Следите за подсказками, журналом и доступными кнопками.';
+        mode = 'neutral';
+        break;
+    }
+  }
+
+  box.classList.remove('active', 'warning', 'danger', 'neutral');
+  box.classList.add(mode);
+
+  titleEl.textContent = title;
+  textEl.textContent = text;
+}
 
 function render() {
   const g = state.game, ps = state.players;
   const current = ps.find(p => +p.user_id === +g.current_turn_player_id);
+
+  renderTurnHint();
 
   $('#turnLabel').textContent =
     g.status === 'waiting' ? 'Ожидание старта' : g.status === 'finished' ? 'Игра завершена' : 'Ход: ' + (current ? current.username + ' / ' + current.character_name : '-');
@@ -629,15 +719,18 @@ function renderPlayersAndSeats() {
       `;
     }
 
-    const href = meInGame
-      ? `change_seat.php?game_id=${gid}&seat=${i}`
-      : `join_game.php?game_id=${gid}&seat=${i}`;
+    const actionUrl = meInGame ? 'change_seat.php' : 'join_game.php';
 
     return `
-      <a class="seat" href="${href}">
-        <b>${c.name}</b>
-        <span>${meInGame ? 'сменить' : 'занять'}</span>
-      </a>
+      <form class="seat seat-form" action="${actionUrl}" method="post">
+        <input type="hidden" name="csrf_token" value="${escapeHtml(CSRF_TOKEN)}">
+        <input type="hidden" name="game_id" value="${escapeHtml(gid)}">
+        <input type="hidden" name="seat" value="${i}">
+        <button type="submit">
+          <b>${escapeHtml(c.name)}</b>
+          <span>${meInGame ? 'сменить' : 'занять'}</span>
+        </button>
+      </form>
     `;
   }).join('');
 }

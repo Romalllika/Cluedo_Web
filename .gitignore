@@ -1,11 +1,21 @@
 .env
+.env.*
+!.env.example
+
 .DS_Store
 __MACOSX/
+*.zip
+*.tar
+*.tar.gz
+
+/tmp/
+/cache/
+/logs/
 
 *.log
-*.tmp
 
-/sql/schema.sql
-/sql/seed.sql
+.idea/
+.vscode/
 
-/vendor/
+node_modules/
+vendor/

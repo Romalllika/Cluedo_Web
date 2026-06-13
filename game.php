@@ -64,6 +64,7 @@ if ($canInviteToGame) {
             <?php endif; ?>
 
             <a href="lobby.php">← Лобби</a>
+            <a href="how_to_play.php" target="_blank">Как играть</a>
             <a href="players.php">Игроки</a>
             <a href="profile.php">Мой профиль</a>
             <a href="logout.php">Выход</a>
@@ -87,6 +88,12 @@ if ($canInviteToGame) {
                     <p id="phaseLabel"></p>
                     <div id="afkTimer" class="afk-timer"></div>
                 </div>
+                <section id="turnHint" class="turn-hint">
+                    <div>
+                        <b id="turnHintTitle">Загрузка состояния...</b>
+                        <p id="turnHintText">Подождите, игра получает актуальные данные.</p>
+                    </div>
+                </section>
                 <div class="actions">
                     <button id="startBtn">Старт</button>
                     <?php if ($canInviteToGame): ?>
